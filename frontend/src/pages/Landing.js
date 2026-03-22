@@ -1,26 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Scene3D } from '../components/Scene3D';
+import { useTheme } from '../contexts/ThemeContext';
+import { DimensionalHero } from '../components/DimensionalHero';
+import { Footer } from '../components/Footer';
 import { Cube, ArrowRight, Lightning, Leaf, Brain, ShieldCheck } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 
+const DIMENSION_LABELS = ['1D — Line', '2D — Plane', '3D — Volume', '4D — Tesseract'];
+
 export default function Landing() {
   const { login } = useAuth();
+  const { isDark } = useTheme();
+  const [dimIdx, setDimIdx] = useState(0);
+
+  // Cycle dimension label in sync with the 3D animation (4s hold + 2s transition = 6s per stage)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDimIdx(prev => (prev + 1) % 4);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <main className="min-h-screen" style={{ background: '#000' }} role="main" aria-label="Aetheris Spatial Landing">
-      {/* Hero */}
+    <main className="min-h-screen bg-[var(--bg-default)]" role="main" aria-label="Aetheris Spatial Landing">
+      {/* ═══ Hero ═══ */}
       <section className="relative min-h-screen flex items-center overflow-hidden" aria-label="Hero section">
-        {/* 3D Background - single canvas */}
-        <div className="absolute inset-0 opacity-30">
-          <Scene3D shape="desk" color="#00F0FF" height="100vh" showParticles={true} />
+        {/* Dimensional 3D Background */}
+        <div className="absolute inset-0 opacity-50">
+          <DimensionalHero height="100vh" />
         </div>
 
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00F0FF]/40 to-transparent" />
+        {/* Overlay gradients */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(to bottom, var(--hero-overlay), transparent 40%, transparent 60%, var(--bg-default))` }} />
 
+        {/* Content */}
         <div className="relative z-10 max-w-[1440px] mx-auto px-6 md:px-12 pt-24 pb-16 w-full">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -28,22 +42,26 @@ export default function Landing() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="max-w-3xl"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00F0FF]/20 bg-[#00F0FF]/5 mb-8">
-              <div className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse-glow" />
-              <span className="text-xs font-['JetBrains_Mono'] tracking-[0.2em] uppercase text-[#00F0FF]">
-                Spatial Commerce
+            {/* Dimension indicator */}
+            <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-[var(--brand-primary)]/20 bg-[var(--brand-primary)]/5 mb-8">
+              <div className="w-2 h-2 rounded-full bg-[var(--brand-primary)] animate-pulse-glow" />
+              <span className="text-xs font-['JetBrains_Mono'] tracking-[0.15em] uppercase text-[var(--brand-primary)]" data-testid="dimension-label">
+                {DIMENSION_LABELS[dimIdx]}
               </span>
             </div>
 
-            <h1 className="font-['Unbounded'] text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-none mb-6">
-              <span className="text-white">Design in</span>
+            <h1 className="font-['Unbounded'] text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-[0.95] mb-6">
+              <span className="text-[var(--text-primary)]">Design Across</span>
               <br />
-              <span className="text-[#00F0FF] text-glow-cyan">Three Dimensions</span>
+              <span className="text-[var(--brand-primary)]" style={{ textShadow: isDark ? '0 0 30px var(--brand-primary)' : 'none' }}>
+                Every Dimension
+              </span>
             </h1>
 
-            <p className="text-base md:text-lg text-[#A1A1AA] font-['Outfit'] font-light leading-relaxed max-w-xl mb-10">
-              The AI-native 3D marketplace where you explore, customize, and own 
-              modular products in real-time spatial interfaces. Beyond flat. Beyond browsing.
+            <p className="text-base md:text-lg text-[var(--text-secondary)] font-['Outfit'] font-light leading-relaxed max-w-xl mb-10">
+              The AI-native spatial marketplace. Explore products beyond flat browsing —
+              customize in real-time 3D, morph through n-dimensional parameter spaces,
+              and let spatial intelligence shape your world.
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -51,7 +69,7 @@ export default function Landing() {
                 onClick={login}
                 data-testid="hero-cta-enter"
                 aria-label="Sign in to enter the Aetheris Spatial platform"
-                className="group flex items-center gap-3 px-8 py-3.5 rounded-full bg-[#00F0FF] text-black font-['Outfit'] font-semibold text-sm hover:bg-[#66F6FF] transition-colors duration-300 hover:shadow-[0_0_30px_rgba(0,240,255,0.4)]"
+                className="group flex items-center gap-3 px-8 py-3.5 rounded-full bg-[var(--brand-primary)] text-black font-['Outfit'] font-semibold text-sm hover:opacity-90 transition-all duration-300"
               >
                 Enter the Spatial
                 <ArrowRight size={18} weight="bold" className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -60,16 +78,33 @@ export default function Landing() {
                 onClick={login}
                 data-testid="hero-cta-explore"
                 aria-label="Explore products in the marketplace"
-                className="flex items-center gap-3 px-8 py-3.5 rounded-full border border-white/10 text-white font-['Outfit'] font-medium text-sm hover:bg-white/5 hover:border-white/20 transition-colors duration-300"
+                className="flex items-center gap-3 px-8 py-3.5 rounded-full border border-[var(--border-subtle)] text-[var(--text-primary)] font-['Outfit'] font-medium text-sm hover:bg-[var(--card-hover-bg)] hover:border-[var(--text-muted)] transition-all duration-300"
               >
                 Explore Products
               </button>
             </div>
+
+            {/* Dimension Progress Dots */}
+            <div className="flex items-center gap-2 mt-10" aria-label="Current visualization dimension">
+              {DIMENSION_LABELS.map((label, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
+                    i === dimIdx ? 'bg-[var(--brand-primary)] scale-125' : 'bg-[var(--text-muted)]/30'
+                  }`} />
+                  <span className={`text-[9px] font-['JetBrains_Mono'] transition-colors duration-500 ${
+                    i === dimIdx ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)]/40'
+                  }`}>{label.split(' — ')[0]}</span>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
+
+        {/* Bottom gradient line */}
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--brand-primary)]/30 to-transparent" />
       </section>
 
-      {/* Features Bento */}
+      {/* ═══ Features Bento ═══ */}
       <section className="relative py-24 px-6 md:px-12 max-w-[1440px] mx-auto" aria-label="Platform features">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -78,16 +113,16 @@ export default function Landing() {
           transition={{ duration: 0.6 }}
           className="mb-16"
         >
-          <span className="text-xs font-['JetBrains_Mono'] tracking-[0.2em] uppercase text-[#FF0055] block mb-4">
+          <span className="text-xs font-['JetBrains_Mono'] tracking-[0.2em] uppercase text-[var(--brand-ai)] block mb-4">
             Why Aetheris
           </span>
-          <h2 className="font-['Unbounded'] text-2xl md:text-3xl font-bold tracking-tight text-white">
+          <h2 className="font-['Unbounded'] text-2xl md:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
             A Leap Beyond Flat Marketplaces
           </h2>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Hero Card - with CSS glow instead of second Canvas */}
+          {/* Hero Feature Card */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -96,22 +131,20 @@ export default function Landing() {
             className="md:col-span-8 md:row-span-2 liquid-glass rounded-2xl p-8 md:p-12 relative overflow-hidden group"
             data-testid="feature-3d-customization"
           >
-            <div className="absolute top-0 right-0 w-80 h-80 bg-[#00F0FF]/8 rounded-full blur-[100px] group-hover:bg-[#00F0FF]/12 transition-colors duration-700" />
-            <div className="absolute bottom-0 left-1/2 w-60 h-60 bg-[#FF0055]/5 rounded-full blur-[80px]" />
+            <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-[100px] opacity-10 group-hover:opacity-20 transition-opacity duration-700" style={{ background: 'var(--brand-primary)' }} />
+            <div className="absolute bottom-0 left-1/2 w-60 h-60 rounded-full blur-[80px] opacity-5" style={{ background: 'var(--brand-ai)' }} />
             <div className="relative z-10">
-              <Cube size={32} weight="duotone" className="text-[#00F0FF] mb-6" />
-              <h3 className="font-['Unbounded'] text-xl md:text-2xl font-bold tracking-tight text-white mb-4">
-                Real-Time 3D Customization
+              <Cube size={32} weight="duotone" className="text-[var(--brand-primary)] mb-6" />
+              <h3 className="font-['Unbounded'] text-xl md:text-2xl font-bold tracking-tight text-[var(--text-primary)] mb-4">
+                Multi-Dimensional Customization
               </h3>
-              <p className="text-[#A1A1AA] font-['Outfit'] font-light text-sm md:text-base leading-relaxed max-w-md mb-8">
-                Rotate, configure, and personalize every product in immersive 3D. 
-                Change materials, colors, and modules with instant visual feedback.
+              <p className="text-[var(--text-secondary)] font-['Outfit'] font-light text-sm md:text-base leading-relaxed max-w-md mb-8">
+                Navigate product parameter spaces across dimensions. Morph geometry, explore material composites,
+                and discover design variants the AI generates from n-dimensional reasoning.
               </p>
               <div className="flex gap-3">
-                {['#00F0FF', '#FF0055', '#E0FF00', '#0066FF'].map((c, i) => (
-                  <div key={i} className="w-10 h-10 rounded-xl border border-white/10" style={{ background: `${c}20` }}>
-                    <div className="w-full h-full rounded-xl" style={{ background: `linear-gradient(135deg, ${c}40, transparent)` }} />
-                  </div>
+                {['var(--brand-primary)', 'var(--brand-ai)', 'var(--brand-success)', '#0066FF'].map((c, i) => (
+                  <div key={i} className="w-10 h-10 rounded-xl border border-[var(--border-subtle)]" style={{ background: `color-mix(in srgb, ${c} 15%, transparent)` }} />
                 ))}
               </div>
             </div>
@@ -123,18 +156,17 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="md:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden tracing-beam"
+            className="md:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden"
             data-testid="feature-ai-designer"
           >
-            <div className="relative z-10">
-              <Brain size={28} weight="duotone" className="text-[#FF0055] mb-4" />
-              <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-white mb-2">
-                AI Co-Designer
-              </h3>
-              <p className="text-[#A1A1AA] font-['Outfit'] font-light text-sm leading-relaxed">
-                Powered by GPT-5.2. Describe your vision in natural language and watch it materialize.
-              </p>
-            </div>
+            <Brain size={28} weight="duotone" className="text-[var(--brand-ai)] mb-4" />
+            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-[var(--text-primary)] mb-2">
+              AI Co-Designer
+            </h3>
+            <p className="text-[var(--text-secondary)] font-['Outfit'] font-light text-sm leading-relaxed">
+              Five specialized agents — Design, Material, Style, Spatial, Generative — powered by GPT-5.2.
+              Describe your vision and watch it materialize across dimensions.
+            </p>
           </motion.div>
 
           {/* Sustainability */}
@@ -146,16 +178,16 @@ export default function Landing() {
             className="md:col-span-4 liquid-glass rounded-2xl p-8"
             data-testid="feature-sustainability"
           >
-            <Leaf size={28} weight="duotone" className="text-[#E0FF00] mb-4" />
-            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-white mb-2">
+            <Leaf size={28} weight="duotone" className="text-[var(--brand-success)] mb-4" />
+            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-[var(--text-primary)] mb-2">
               Sustainability Scored
             </h3>
-            <p className="text-[#A1A1AA] font-['Outfit'] font-light text-sm leading-relaxed">
-              Every product rated for environmental impact. Make conscious choices with transparent metrics.
+            <p className="text-[var(--text-secondary)] font-['Outfit'] font-light text-sm leading-relaxed">
+              Every product rated for environmental impact. Transparent eco-scores, material origins, and carbon metrics.
             </p>
           </motion.div>
 
-          {/* Speed */}
+          {/* Performance */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -164,15 +196,16 @@ export default function Landing() {
             className="md:col-span-6 liquid-glass rounded-2xl p-8"
             data-testid="feature-performance"
           >
-            <Lightning size={28} weight="duotone" className="text-[#00F0FF] mb-4" />
-            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-white mb-2">
-              WebGPU-Accelerated
+            <Lightning size={28} weight="duotone" className="text-[var(--brand-primary)] mb-4" />
+            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-[var(--text-primary)] mb-2">
+              Spatial-First Rendering
             </h3>
-            <p className="text-[#A1A1AA] font-['Outfit'] font-light text-sm leading-relaxed">
-              Blazing fast 3D rendering with real-time ray tracing. Fluid 60fps interactions on any modern device.
+            <p className="text-[var(--text-secondary)] font-['Outfit'] font-light text-sm leading-relaxed">
+              Fluid 60fps 3D interactions. Dimensional morphing with real-time constraint satisfaction. Beyond flat browsing.
             </p>
           </motion.div>
 
+          {/* Design Vault */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -181,44 +214,19 @@ export default function Landing() {
             className="md:col-span-6 liquid-glass rounded-2xl p-8"
             data-testid="feature-vault"
           >
-            <ShieldCheck size={28} weight="duotone" className="text-[#00F0FF] mb-4" />
-            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-white mb-2">
+            <ShieldCheck size={28} weight="duotone" className="text-[var(--brand-primary)] mb-4" />
+            <h3 className="font-['Unbounded'] text-base font-bold tracking-tight text-[var(--text-primary)] mb-2">
               Design Vault
             </h3>
-            <p className="text-[#A1A1AA] font-['Outfit'] font-light text-sm leading-relaxed">
-              Save, version, and share your configurations. Build collections. Return to any previous design iteration.
+            <p className="text-[var(--text-secondary)] font-['Outfit'] font-light text-sm leading-relaxed">
+              Save, version, and share configurations. Build collections across dimensional variants. Full version history.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-12 px-6" role="contentinfo">
-        <div className="max-w-[1440px] mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
-            <div className="flex items-center gap-2">
-              <Cube size={20} weight="bold" className="text-[#00F0FF]" aria-hidden="true" />
-              <span className="font-['Unbounded'] text-xs font-bold text-white">AETHERIS SPATIAL</span>
-            </div>
-            <nav aria-label="Legal links" className="flex items-center gap-6">
-              <Link to="/privacy" className="text-xs text-[#71717A] font-['Outfit'] hover:text-[#A1A1AA] transition-colors duration-300" data-testid="footer-privacy-link">
-                Privacy Policy
-              </Link>
-              <Link to="/terms" className="text-xs text-[#71717A] font-['Outfit'] hover:text-[#A1A1AA] transition-colors duration-300" data-testid="footer-terms-link">
-                Terms of Service
-              </Link>
-            </nav>
-          </div>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-2 pt-6 border-t border-white/5">
-            <p className="text-[10px] text-[#71717A] font-['Outfit']">
-              GDPR & CCPA compliant. Strictly necessary cookies only.
-            </p>
-            <p className="text-[10px] text-[#71717A] font-['Outfit']">
-              WCAG 2.2 AA accessible. Built with sustainability in mind.
-            </p>
-          </div>
-        </div>
-      </footer>
+      {/* ═══ Footer ═══ */}
+      <Footer />
     </main>
   );
 }

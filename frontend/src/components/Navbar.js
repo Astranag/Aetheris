@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { MagnifyingGlass, Cube, Flask, Vault, GearSix, SignOut, User, List, X } from '@phosphor-icons/react';
+import { useTheme } from '../contexts/ThemeContext';
+import { Cube, Flask, Vault, GearSix, SignOut, User, List, X, Sun, Moon, Brain } from '@phosphor-icons/react';
 
 export const Navbar = () => {
   const { user, login, logout } = useAuth();
-  const navigate = useNavigate();
+  const { theme, toggle, isDark } = useTheme();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -23,10 +24,10 @@ export const Navbar = () => {
       <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to={user ? '/dashboard' : '/'} className="flex items-center gap-3 group" data-testid="navbar-logo" aria-label="Aetheris Spatial - Home">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00F0FF] to-[#FF0055] flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-ai)] flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
             <Cube size={18} weight="bold" className="text-black" />
           </div>
-          <span className="font-['Unbounded'] font-bold text-sm tracking-tight text-white">
+          <span className="font-['Unbounded'] font-bold text-sm tracking-tight text-[var(--text-primary)]">
             AETHERIS
           </span>
         </Link>
@@ -41,8 +42,8 @@ export const Navbar = () => {
                 data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-['Outfit'] transition-all duration-300 ${
                   isActive(item.path)
-                    ? 'text-[#00F0FF] bg-[#00F0FF]/10 border border-[#00F0FF]/30'
-                    : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'
+                    ? 'text-[var(--brand-primary)] bg-[var(--brand-primary)]/10 border border-[var(--brand-primary)]/30'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover-bg)]'
                 }`}
               >
                 <item.icon size={16} weight={isActive(item.path) ? 'fill' : 'regular'} />
@@ -53,23 +54,46 @@ export const Navbar = () => {
         )}
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* AI Quick Access - shown when logged in */}
+          {user && (
+            <Link
+              to="/studio"
+              data-testid="nav-ai-access"
+              aria-label="AI Co-Designer"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-['Outfit'] text-[var(--brand-ai)] bg-[var(--brand-ai)]/8 border border-[var(--brand-ai)]/20 hover:bg-[var(--brand-ai)]/15 transition-all"
+            >
+              <Brain size={14} weight="fill" />
+              AI
+            </Link>
+          )}
+
+          {/* Theme Toggle */}
+          <button
+            onClick={toggle}
+            data-testid="theme-toggle-btn"
+            aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+            className="p-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover-bg)] transition-all duration-300"
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           {user ? (
             <>
-              <div className="hidden md:flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/8">
+              <div className="hidden md:flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--card-hover-bg)] border border-[var(--border-subtle)]">
                   {user.picture ? (
                     <img src={user.picture} alt="" className="w-6 h-6 rounded-full" />
                   ) : (
-                    <User size={16} className="text-[#A1A1AA]" />
+                    <User size={16} className="text-[var(--text-secondary)]" />
                   )}
-                  <span className="text-sm text-[#A1A1AA] font-['Outfit']">{user.name?.split(' ')[0]}</span>
+                  <span className="text-sm text-[var(--text-secondary)] font-['Outfit']">{user.name?.split(' ')[0]}</span>
                 </div>
                 <button
                   onClick={logout}
                   data-testid="logout-btn"
                   aria-label="Sign out of your account"
-                  className="p-2 rounded-full text-[#A1A1AA] hover:text-[#FF0055] hover:bg-[#FF0055]/10 transition-all duration-300"
+                  className="p-2 rounded-full text-[var(--text-secondary)] hover:text-[var(--brand-ai)] hover:bg-[var(--brand-ai)]/10 transition-all duration-300"
                 >
                   <SignOut size={18} />
                 </button>
@@ -77,7 +101,7 @@ export const Navbar = () => {
               {/* Mobile menu toggle */}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="md:hidden p-2 text-[#A1A1AA]"
+                className="md:hidden p-2 text-[var(--text-secondary)]"
                 data-testid="mobile-menu-toggle"
                 aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
                 aria-expanded={mobileOpen}
@@ -90,7 +114,7 @@ export const Navbar = () => {
             <button
               onClick={login}
               data-testid="login-btn"
-              className="px-5 py-2 rounded-full text-sm font-['Outfit'] font-medium bg-[#00F0FF] text-black hover:bg-[#66F6FF] transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]"
+              className="px-5 py-2 rounded-full text-sm font-['Outfit'] font-medium bg-[var(--brand-primary)] text-black hover:opacity-90 transition-all duration-300"
             >
               Enter Aetheris
             </button>
@@ -100,14 +124,14 @@ export const Navbar = () => {
 
       {/* Mobile nav */}
       {mobileOpen && user && (
-        <div className="md:hidden px-6 pb-4 border-t border-white/5" data-testid="mobile-nav" id="mobile-nav-menu" role="menu">
+        <div className="md:hidden px-6 pb-4 border-t border-[var(--border-subtle)]" data-testid="mobile-nav" id="mobile-nav-menu" role="menu">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 text-sm font-['Outfit'] ${
-                isActive(item.path) ? 'text-[#00F0FF]' : 'text-[#A1A1AA]'
+                isActive(item.path) ? 'text-[var(--brand-primary)]' : 'text-[var(--text-secondary)]'
               }`}
             >
               <item.icon size={18} />
@@ -116,7 +140,7 @@ export const Navbar = () => {
           ))}
           <button
             onClick={() => { logout(); setMobileOpen(false); }}
-            className="flex items-center gap-3 px-4 py-3 text-sm font-['Outfit'] text-[#FF0055] w-full"
+            className="flex items-center gap-3 px-4 py-3 text-sm font-['Outfit'] text-[var(--brand-ai)] w-full"
           >
             <SignOut size={18} />
             Logout

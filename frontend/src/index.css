@@ -4,10 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root, [data-theme="dark"] {
   --bg-void: #000000;
   --bg-default: #030303;
   --bg-surface: #0A0A0A;
+  --bg-elevated: #111111;
   --text-primary: #FFFFFF;
   --text-secondary: #A1A1AA;
   --text-muted: #71717A;
@@ -18,6 +19,31 @@
   --brand-success: #E0FF00;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-active: rgba(0, 240, 255, 0.5);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-shadow: rgba(0, 0, 0, 0.4);
+  --hero-overlay: rgba(0, 0, 0, 0.7);
+  --card-hover-bg: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] {
+  --bg-void: #F5F5F0;
+  --bg-default: #FAFAF8;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F0F0EC;
+  --text-primary: #1A1A1A;
+  --text-secondary: #52525B;
+  --text-muted: #71717A;
+  --brand-primary: #0091A3;
+  --brand-hover: #00B4CC;
+  --brand-ai: #CC003D;
+  --brand-ai-glow: rgba(204, 0, 61, 0.25);
+  --brand-success: #6B8F00;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-active: rgba(0, 145, 163, 0.5);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-shadow: rgba(0, 0, 0, 0.08);
+  --hero-overlay: rgba(250, 250, 248, 0.75);
+  --card-hover-bg: rgba(0, 0, 0, 0.03);
 }
 
 * {
@@ -33,6 +59,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -44,7 +71,7 @@ code, pre, .mono {
 }
 
 @layer base {
-  :root {
+  :root, [data-theme="dark"] {
     --background: 0 0% 1.2%;
     --foreground: 0 0% 100%;
     --card: 0 0% 3.9%;
@@ -70,6 +97,32 @@ code, pre, .mono {
     --chart-4: 220 70% 50%;
     --chart-5: 30 80% 55%;
     --radius: 0.5rem;
+  }
+  [data-theme="light"] {
+    --background: 40 10% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 185 100% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 5% 94%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 40 5% 90%;
+    --muted-foreground: 0 0% 44%;
+    --accent: 40 5% 94%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 345 80% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 185 100% 32%;
+    --chart-1: 185 80% 40%;
+    --chart-2: 345 80% 45%;
+    --chart-3: 72 80% 35%;
+    --chart-4: 220 60% 45%;
+    --chart-5: 30 70% 50%;
   }
 }
 
@@ -110,20 +163,21 @@ code, pre, .mono {
   background: var(--bg-void);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.12);
+  background: var(--border-subtle);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,240,255,0.3);
+  background: var(--border-active);
 }
 
 /* Liquid Glass */
 .liquid-glass {
-  background: rgba(255,255,255,0.04);
+  background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px var(--glass-shadow);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Neon glow utilities */
@@ -295,4 +349,10 @@ textarea:focus-visible,
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* App pages always render in dark mode for contrast */
+.app-dark-shell {
+  background: #030303 !important;
+  color: #FFFFFF !important;
 }

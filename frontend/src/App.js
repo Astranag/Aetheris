@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieConsent } from './components/CookieConsent';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -18,12 +20,17 @@ import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
 import { Toaster } from 'sonner';
 
+/* Pages that include their own footer or shouldn't have one */
+const NO_FOOTER_PATHS = ['/', '/admin'];
+
 const AppRouter = () => {
   const location = useLocation();
 
   if (location.hash?.includes('session_id=')) {
     return <AuthCallback />;
   }
+
+  const showFooter = !NO_FOOTER_PATHS.includes(location.pathname);
 
   return (
     <>
@@ -32,7 +39,7 @@ const AppRouter = () => {
         Skip to main content
       </a>
 
-      <Navbar />
+      {location.pathname !== '/admin' && <Navbar />}
 
       <div id="main-content">
         <Routes>
@@ -49,6 +56,8 @@ const AppRouter = () => {
         </Routes>
       </div>
 
+      {showFooter && <Footer />}
+
       {/* GDPR: Cookie consent banner */}
       <CookieConsent />
     </>
@@ -59,21 +68,23 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AuthProvider>
-          <AppRouter />
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: '#0A0A0A',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: '#fff',
-                fontFamily: 'Outfit, sans-serif',
-                fontSize: '13px',
-              },
-            }}
-          />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppRouter />
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'Outfit, sans-serif',
+                  fontSize: '13px',
+                },
+              }}
+            />
+          </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );
