@@ -91,8 +91,10 @@ Build Aetheris Spatial — a next-generation web experience where users explore,
 - Scroll-triggered animations for product reveal
 
 ## Next Tasks
-1. Add smart AI-powered search using GPT-5.2
-2. Implement product recommendations engine
-3. Add GLTF model loading for real product models
-4. Build social sharing with OG image generation
-5. Add advanced 3D controls (zoom, pan, orbit with touch)
+1. Add smart AI-powered search using GPT-5.2 natural language queries
+2. Implement product recommendations engine based on browsing/design history
+3. Add GLTF/GLB model loading for real product 3D models
+4. Build social sharing with OG image generation from 3D snapshots
+5. Add voice input for AI Co-Designer (Web Speech API)
+6. Implement n-dimensional parameter space visualization for design variants
+7. Add axe-core accessibility audit automation in CI/CD

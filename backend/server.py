@@ -381,14 +381,12 @@ BEHAVIORAL RULES:
 
 @api_router.post("/ai/chat")
 async def ai_chat(msg: ChatMessage, request: Request):
-    user = await get_current_user(request)
-
-    # Input validation
+    # Input validation first for better error specificity
     safe_message = sanitize_input(msg.message, max_length=1000)
-    if not safe_message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-    if len(safe_message) < 2:
-        raise HTTPException(status_code=400, detail="Message too short")
+    if not safe_message or len(safe_message) < 2:
+        raise HTTPException(status_code=400, detail="Message must be at least 2 characters")
+
+    user = await get_current_user(request)
 
     product_context = ""
     if msg.product_id:
