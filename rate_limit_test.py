@@ -3,7 +3,7 @@ import time
 
 def test_rate_limiting_detailed():
     """Test rate limiting with more detailed analysis"""
-    base_url = "https://modular-visualizer.preview.emergentagent.com"
+    base_url = "https://spatial-nexus-2.preview.emergentagent.com"
     
     print("🔍 Testing Rate Limiting in Detail...")
     

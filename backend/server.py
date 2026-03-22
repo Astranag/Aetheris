@@ -802,6 +802,78 @@ async def admin_ontology(request: Request):
     verify_admin_token(request)
     return AETHERIS_ONTOLOGY
 
+@api_router.get("/admin/security-logs")
+async def admin_security_logs(request: Request, limit: int = 100):
+    verify_admin_token(request)
+    # Aggregate security events: logins, rate limits, data deletions
+    admin_logins = await db.admin_activity.find({"action": "admin_login"}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    data_deletions = await db.admin_activity.find({"action": {"$in": ["gdpr_erasure", "data_export"]}}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    sessions = await db.user_sessions.find({}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    return {
+        "admin_logins": admin_logins,
+        "data_deletions": data_deletions,
+        "active_sessions": sessions,
+        "rate_limit_config": {"window_seconds": RATE_LIMIT_WINDOW, "max_general": RATE_LIMIT_MAX, "max_ai": AI_RATE_LIMIT_MAX},
+        "security_headers": ["X-Content-Type-Options", "X-Frame-Options", "X-XSS-Protection", "Referrer-Policy", "HSTS", "Permissions-Policy"],
+        "compliance": {"gdpr": True, "ccpa": True, "wcag_aa": True, "cookie_consent": True}
+    }
+
+@api_router.get("/admin/system-health")
+async def admin_system_health(request: Request):
+    verify_admin_token(request)
+    import psutil
+    # System metrics
+    cpu_pct = psutil.cpu_percent(interval=0.1)
+    mem = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    # DB stats
+    db_stats = await db.command("dbstats")
+    return {
+        "cpu_percent": cpu_pct,
+        "memory_used_mb": round(mem.used / 1024 / 1024),
+        "memory_total_mb": round(mem.total / 1024 / 1024),
+        "memory_percent": mem.percent,
+        "disk_used_gb": round(disk.used / 1024 / 1024 / 1024, 1),
+        "disk_total_gb": round(disk.total / 1024 / 1024 / 1024, 1),
+        "disk_percent": round(disk.percent, 1),
+        "db_size_mb": round(db_stats.get("dataSize", 0) / 1024 / 1024, 2),
+        "db_collections": db_stats.get("collections", 0),
+        "db_objects": db_stats.get("objects", 0),
+        "uptime_status": "operational",
+        "api_version": "1.0.0",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.post("/admin/ontology/update")
+async def admin_update_ontology(request: Request):
+    """Super-Admin: live ontology modification"""
+    verify_admin_token(request)
+    body = await request.json()
+    field = body.get("field")  # shapes, materials, etc.
+    action = body.get("action")  # add, remove
+    value = body.get("value")
+    if field not in AETHERIS_ONTOLOGY:
+        raise HTTPException(status_code=400, detail=f"Invalid ontology field: {field}")
+    if field == "colors":
+        if action == "add" and isinstance(value, dict):
+            AETHERIS_ONTOLOGY["colors"].update(value)
+        elif action == "remove" and isinstance(value, str):
+            AETHERIS_ONTOLOGY["colors"].pop(value, None)
+    else:
+        target = AETHERIS_ONTOLOGY[field]
+        if isinstance(target, list):
+            if action == "add" and value not in target:
+                target.append(value)
+            elif action == "remove" and value in target:
+                target.remove(value)
+    await db.admin_activity.insert_one({
+        "action": f"ontology_{action}",
+        "email": ADMIN_EMAIL,
+        "detail": {"field": field, "value": str(value)},
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return AETHERIS_ONTOLOGY
+
 # ──────────── Product Recommendations ────────────
 @api_router.post("/tracking/view")
 async def track_view(request: Request):

@@ -14,6 +14,7 @@ import DesignVault from './pages/DesignVault';
 import Settings from './pages/Settings';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
 import { Toaster } from 'sonner';
 
@@ -43,6 +44,7 @@ const AppRouter = () => {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
