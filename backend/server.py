@@ -9,6 +9,8 @@ import uuid
 import re
 import html
 import time
+import hashlib
+import jwt
 import requests as http_requests
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
@@ -31,6 +33,33 @@ EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_NAME = "aetheris-spatial"
 storage_key = None
+
+# Admin Config
+ADMIN_EMAIL = "meta360d@gmail.com"
+ADMIN_PASSWORD_HASH = hashlib.sha256("Adimnaetheris".encode()).hexdigest()
+JWT_SECRET = os.environ.get('JWT_SECRET', f"aetheris_jwt_{uuid.uuid4().hex[:16]}")
+
+# ──────────── Full Aetheris Ontology ────────────
+AETHERIS_ONTOLOGY = {
+    "shapes": ["desk", "chair", "panel", "hexagon", "pod", "cylinder"],
+    "materials": ["Bamboo Composite", "Recycled Aluminum", "Bio-Resin", "Cork", "Tempered Glass", "Carbon Fiber", "Mycelium Biofoam"],
+    "colors": {
+        "Void Black": "#1a1a1a", "Arctic White": "#e8e8e8", "Neon Cyan": "#00F0FF",
+        "Warm Graphite": "#4a4a4a", "Solar Magenta": "#FF0055", "Emerald Flux": "#2d5a27",
+        "Amber Pulse": "#ffb347", "Deep Ocean": "#0a1628"
+    },
+    "constraints": {
+        "ergonomics": ["reachability", "comfort", "posture", "clearance"],
+        "sustainability": ["eco_score", "material_origin", "recyclability"],
+        "manufacturing": ["feasibility", "tolerances", "cost_limits"],
+        "spatial": ["dimensions", "orientation", "collision", "flow"]
+    },
+    "sustainability_vectors": {
+        "material_score": "0-100", "energy_cost": "low/medium/high",
+        "recyclability": "percentage", "carbon_impact": "kg CO2e", "lifespan": "years"
+    },
+    "dimensional_extensions": ["4D temporal geometry", "n-dimensional parameter space", "topological morphing", "procedural generative rules"]
+}
 
 app = FastAPI(title="Aetheris Spatial API", version="1.0.0", docs_url="/api/docs", redoc_url=None)
 api_router = APIRouter(prefix="/api")
@@ -666,6 +695,219 @@ async def export_user_data(request: Request):
         "data_categories": ["profile", "preferences", "designs", "ai_chat_history"]
     }
 
+# ──────────── Admin Auth ────────────
+class AdminLogin(BaseModel):
+    email: str
+    password: str
+
+def create_admin_token(email: str) -> str:
+    payload = {"email": email, "role": "admin", "exp": datetime.now(timezone.utc) + timedelta(hours=24)}
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+def verify_admin_token(request: Request) -> dict:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Admin auth required")
+    try:
+        payload = jwt.decode(auth[7:], JWT_SECRET, algorithms=["HS256"])
+        if payload.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not an admin")
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@api_router.post("/admin/login")
+async def admin_login(creds: AdminLogin):
+    if creds.email != ADMIN_EMAIL:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if hashlib.sha256(creds.password.encode()).hexdigest() != ADMIN_PASSWORD_HASH:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_admin_token(creds.email)
+    # Log admin activity
+    await db.admin_activity.insert_one({
+        "action": "admin_login", "email": creds.email,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return {"token": token, "email": creds.email, "role": "admin"}
+
+@api_router.get("/admin/me")
+async def admin_me(request: Request):
+    payload = verify_admin_token(request)
+    return {"email": payload["email"], "role": "admin"}
+
+# ──────────── Admin Dashboard Data ────────────
+@api_router.get("/admin/stats")
+async def admin_stats(request: Request):
+    verify_admin_token(request)
+    users_count = await db.users.count_documents({})
+    designs_count = await db.designs.count_documents({})
+    products_count = await db.products.count_documents({})
+    chats_count = await db.chat_history.count_documents({})
+    sessions_count = await db.user_sessions.count_documents({})
+    files_count = await db.files.count_documents({"is_deleted": False})
+    categories = await db.products.distinct("category")
+    # Recent activity
+    recent_designs = await db.designs.find({}, {"_id": 0}).sort("created_at", -1).to_list(5)
+    recent_chats = await db.chat_history.find({}, {"_id": 0}).sort("created_at", -1).to_list(5)
+    return {
+        "total_users": users_count,
+        "total_designs": designs_count,
+        "total_products": products_count,
+        "total_ai_chats": chats_count,
+        "active_sessions": sessions_count,
+        "total_files": files_count,
+        "categories": categories,
+        "recent_designs": recent_designs,
+        "recent_chats": recent_chats,
+        "ontology_shapes": len(AETHERIS_ONTOLOGY["shapes"]),
+        "ontology_materials": len(AETHERIS_ONTOLOGY["materials"]),
+        "ontology_colors": len(AETHERIS_ONTOLOGY["colors"]),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.get("/admin/users")
+async def admin_users(request: Request):
+    verify_admin_token(request)
+    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    # Enrich with design counts
+    for u in users:
+        u["design_count"] = await db.designs.count_documents({"user_id": u["user_id"]})
+        u["chat_count"] = await db.chat_history.count_documents({"user_id": u["user_id"]})
+    return users
+
+@api_router.get("/admin/designs")
+async def admin_designs(request: Request):
+    verify_admin_token(request)
+    designs = await db.designs.find({}, {"_id": 0}).sort("updated_at", -1).to_list(200)
+    return designs
+
+@api_router.get("/admin/chat-history")
+async def admin_chat_history(request: Request, limit: int = 50):
+    verify_admin_token(request)
+    chats = await db.chat_history.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return chats
+
+@api_router.get("/admin/activity")
+async def admin_activity(request: Request, limit: int = 100):
+    verify_admin_token(request)
+    activities = await db.admin_activity.find({}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    # Also add user tracking events
+    tracking = await db.tracking.find({}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    return {"admin_actions": activities, "user_tracking": tracking}
+
+@api_router.get("/admin/ontology")
+async def admin_ontology(request: Request):
+    verify_admin_token(request)
+    return AETHERIS_ONTOLOGY
+
+# ──────────── Product Recommendations ────────────
+@api_router.post("/tracking/view")
+async def track_view(request: Request):
+    """Track product views for recommendation engine"""
+    body = await request.json()
+    product_id = body.get("product_id")
+    if not product_id:
+        return {"status": "ignored"}
+    # Get user if authenticated
+    user_id = None
+    try:
+        user = await get_current_user(request)
+        user_id = user["user_id"]
+    except Exception:
+        pass
+    await db.tracking.insert_one({
+        "event": "product_view",
+        "product_id": product_id,
+        "user_id": user_id,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return {"status": "tracked"}
+
+@api_router.get("/recommendations")
+async def get_recommendations(request: Request, product_id: Optional[str] = None):
+    """AI-driven product recommendations from browsing + design history"""
+    user_id = None
+    try:
+        user = await get_current_user(request)
+        user_id = user["user_id"]
+    except Exception:
+        pass
+
+    recommendations = []
+    
+    if user_id:
+        # Get user's design history for preference modeling
+        user_designs = await db.designs.find({"user_id": user_id}, {"_id": 0}).to_list(20)
+        user_views = await db.tracking.find({"user_id": user_id, "event": "product_view"}, {"_id": 0}).sort("timestamp", -1).to_list(20)
+        
+        # Extract preferred categories/materials from designs
+        preferred_categories = set()
+        viewed_products = set()
+        for d in user_designs:
+            if d.get("configuration", {}).get("material"):
+                pass  # Use for material preference
+        for v in user_views:
+            viewed_products.add(v.get("product_id"))
+        
+        # Get products NOT yet viewed by user
+        query = {}
+        if viewed_products and product_id:
+            query["product_id"] = {"$nin": list(viewed_products), "$ne": product_id}
+        elif product_id:
+            query["product_id"] = {"$ne": product_id}
+        
+        recommendations = await db.products.find(query, {"_id": 0}).sort("sustainability_score", -1).to_list(4)
+    
+    if not recommendations:
+        query = {"product_id": {"$ne": product_id}} if product_id else {}
+        recommendations = await db.products.find(query, {"_id": 0}).sort("sustainability_score", -1).to_list(4)
+
+    return recommendations
+
+# ──────────── Public Spatial Intelligence API ────────────
+class PublicSpatialRequest(BaseModel):
+    message: str
+    context: Optional[dict] = None
+
+@api_router.post("/public/spatial-intelligence")
+async def public_spatial_api(req: PublicSpatialRequest):
+    """Public API endpoint for external tools (Figma, AR, IoT) to consume spatial intelligence"""
+    safe_message = sanitize_input(req.message, max_length=500)
+    if not safe_message or len(safe_message) < 2:
+        raise HTTPException(status_code=400, detail="Message must be at least 2 characters")
+    
+    context_str = ""
+    if req.context:
+        context_str = f"\nContext: {req.context}"
+    
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"aetheris_public_{uuid.uuid4().hex[:8]}",
+            system_message=f"""You are the AETHERIS PUBLIC SPATIAL API. Return ONLY a valid JSON response with this structure:
+{{"action": "modify|generate|optimize|analyze", "target": "shape|material|color|layout", "parameters": {{"shape": "desk|chair|panel|hexagon|pod|cylinder", "color": "#hex", "colorName": "name", "material": "name", "notes": "explanation"}}, "ontology_reference": {{"shapes": {AETHERIS_ONTOLOGY['shapes']}, "materials": {AETHERIS_ONTOLOGY['materials']}}}}}
+{context_str}"""
+        )
+        chat.with_model("openai", "gpt-5.2")
+        response = await chat.send_message(UserMessage(text=html.unescape(safe_message)))
+        
+        # Try to parse JSON from response
+        import json as json_mod
+        try:
+            if '```json' in response:
+                json_block = response.split('```json')[1].split('```')[0].strip()
+                parsed = json_mod.loads(json_block)
+            else:
+                parsed = json_mod.loads(response)
+            return {"status": "success", "payload": parsed, "raw": response}
+        except Exception:
+            return {"status": "success", "payload": None, "raw": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ──────────── Seed Data ────────────
 async def seed_products():
     count = await db.products.count_documents({})
@@ -770,6 +1012,14 @@ async def seed_products():
 @app.on_event("startup")
 async def startup():
     await seed_products()
+    # Seed admin activity log
+    admin_exists = await db.admin_activity.count_documents({})
+    if admin_exists == 0:
+        await db.admin_activity.insert_one({
+            "action": "system_init",
+            "email": ADMIN_EMAIL,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
     try:
         init_storage()
         logger.info("Object storage initialized")
