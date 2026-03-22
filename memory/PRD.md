@@ -4,12 +4,12 @@
 AI-Native 3D Marketplace blending immersive UI, AI-driven personalization, and real-time 3D product previews. Key features: Discovery Hub, Creator Studio, Product Detail Page, Design Vault, Account/Settings, Admin Control Nexus with Dimensional Console.
 
 ## Core Architecture
-- **Frontend**: React 19, Tailwind CSS, Framer Motion, Vanilla Three.js (no @react-three/fiber), Recharts, Phosphor Icons
+- **Frontend**: React 19, Tailwind CSS, Framer Motion, Vanilla Three.js, Recharts, Phosphor Icons
 - **Backend**: FastAPI, Motor (async MongoDB)
 - **AI**: GPT-5.2 via Emergent LLM Key
 - **Auth**: Emergent Google Auth
 - **Storage**: Emergent Object Storage
-- **Design**: Dark futuristic spatial computing aesthetic
+- **Design**: Dark futuristic spatial computing aesthetic (with soft light theme option)
 
 ## Implemented Features
 
@@ -42,13 +42,15 @@ AI-Native 3D Marketplace blending immersive UI, AI-driven personalization, and r
 
 ### Phase 4 — Admin Control Nexus (DONE - March 22, 2026)
 - Admin auth with JWT (hardcoded admin: meta360d@gmail.com)
-- **Panel 1**: System Overview & Health Monitor (CPU, Memory, Disk, DB metrics, stat cards, ontology summary)
-- **Panel 2**: User Intelligence Matrix (user engagement bar charts, user table with design/chat counts)
-- **Panel 3**: Design & Product Management (category pie chart, full designs table)
-- **Panel 4**: AI Agent Control Center (5 agent mode status, conversation flow area chart, chat log with action payloads)
-- **Panel 5**: Spatial Intelligence Analytics (shapes, materials, colors, dimensional extensions, sustainability vectors, constraint framework)
-- **Panel 6**: Security & Compliance (GDPR/CCPA/WCAG/Cookie compliance status, security headers, rate limits, admin login history, active sessions)
-- **Hidden Dimensional Console**: Super-Admin ontology editor (Ctrl+Shift+D), live add/remove shapes/materials/colors/extensions
+- 6 Master Panels: System Overview, User Intelligence, Design & Products, AI Agent Control, Spatial Analytics, Security & Compliance
+- Hidden Dimensional Console (Ctrl+Shift+D) for live ontology editing
+
+### Phase 5 — Design Overhaul & Theme System (DONE - March 22, 2026)
+- **Landing Hero**: Dimensional particle visualization (512 particles morphing 1D→2D→3D→4D tesseract)
+- **Global Footer**: Legal links, compliance badges, copyright, subtle Admin access button
+- **Light/Dark Mode**: CSS variable-based theme system with localStorage persistence. Soft off-white light theme, default dark. WCAG AA contrast in both modes
+- **Navbar Enhancement**: Theme toggle (Sun/Moon), AI quick-access button when logged in
+- Inner app pages (Discovery, Studio, Vault, etc.) stay dark-themed for immersive experience
 
 ## Pending / In Progress
 
@@ -70,5 +72,6 @@ AI-Native 3D Marketplace blending immersive UI, AI-driven personalization, and r
 ## Key Technical Notes
 - **DO NOT** use @react-three/fiber or multiple <Canvas> elements — causes crashes
 - Admin credentials: meta360d@gmail.com / Adimnaetheris
-- All 3D rendering via Vanilla Three.js in Scene3D.js
-- Recharts for admin dashboard analytics charts
+- All 3D rendering via Vanilla Three.js
+- Theme system: `data-theme` attribute on `<html>`, CSS vars, ThemeContext
+- DimensionalHero: 4s hold + 2s morph per stage, continuous loop
