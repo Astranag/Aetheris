@@ -1,0 +1,152 @@
+{
+  "project_name": "Aetheris Spatial",
+  "theme_mode": "dark",
+  "design_archetype": "ELECTRIC & NEON / SPATIAL COMPUTING",
+  "typography": {
+    "primary_font": "Unbounded",
+    "secondary_font": "Outfit",
+    "mono_font": "JetBrains Mono",
+    "rules": [
+      "Headings (>32px) MUST use 'tracking-tight' or 'tracking-tighter'.",
+      "Overlines/Labels MUST be Uppercase + Tiny + Wide Spacing ('tracking-[0.2em]', JetBrains Mono).",
+      "Line Height: Tight ('leading-none') for headers, Loose ('leading-relaxed') for body.",
+      "Never use Inter, Roboto, or standard sans-serif for headings.",
+      "Apply radical weight contrast (e.g., Unbounded Black vs. Outfit Light)."
+    ]
+  },
+  "colors": {
+    "background": {
+      "default": "#030303",
+      "void": "#000000",
+      "surface": "#0A0A0A"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "muted": "#71717A"
+    },
+    "brand": {
+      "primary": "#00F0FF",
+      "primary_hover": "#66F6FF",
+      "ai_accent": "#FF0055",
+      "ai_glow": "rgba(255, 0, 85, 0.4)",
+      "success": "#E0FF00"
+    },
+    "borders": {
+      "subtle": "rgba(255, 255, 255, 0.08)",
+      "active": "rgba(0, 240, 255, 0.5)"
+    },
+    "rules": [
+      "DO NOT use purple or teal for primary CTAs.",
+      "Ensure text meets APCA standards. Use Text Shadow over 3D scenes if needed.",
+      "Hover states MUST have explicitly higher contrast and explicitly defined text colors.",
+      "Never use pure #808080. Always tint greys towards blue/indigo for space vibe."
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": [
+      {
+        "name": "Liquid Glass (Apple Vision Pro variant)",
+        "usage": "Sticky Headers, Floating Navs, Modal Overlays",
+        "classes": "bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+      },
+      {
+        "name": "The Tracing Beam",
+        "usage": "AI Co-Designer sections, Premium Features",
+        "classes": "relative overflow-hidden before:absolute before:inset-0 before:bg-[linear-gradient(to_right,#FF0055,#00F0FF)] before:blur-md before:opacity-50"
+      },
+      {
+        "name": "Technical Grid (Skeleton)",
+        "usage": "Design Vault, Specs Panel",
+        "classes": "border-collapse border-r border-b border-white/5"
+      }
+    ]
+  },
+  "layouts": {
+    "spacing_system": [
+      "Use 2-3x generous spacing: p-8, p-12, p-16, p-24.",
+      "Containers with borders MUST have internal padding (p-6 or p-8) to prevent text collision."
+    ],
+    "grids": [
+      {
+        "page": "Discovery Hub",
+        "mode": "MODE A: The 'Tetris' Grid (Asymmetric)",
+        "rules": "grid-cols-1 md:grid-cols-12 gap-8 to gap-12. Mix spans: Hero (col-span-8 row-span-2), Support (col-span-4), Vertical (col-span-4 row-span-2). Leave breathing room."
+      },
+      {
+        "page": "Creator Studio",
+        "mode": "MODE B: High Density Grid (Functional)",
+        "rules": "grid-cols-12 gap-4. 3D Canvas gets col-span-9, Tools get col-span-3. Every pixel utilized. h-full on children."
+      }
+    ]
+  },
+  "components": {
+    "buttons": "Pill-shaped or sharp technical buttons. Neon glowing hover states (`hover:shadow-[0_0_15px_#00F0FF] hover:border-[#00F0FF]`).",
+    "cards": "Cardless or heavily glassmorphic. Do NOT use default Shadcn white cards. Override with Liquid Glass.",
+    "forms": "Shadcn components heavily customized to dark mode. Inputs have pure black background (`bg-black`) and subtle border (`border-white/10`), focus uses neon glow (`focus:ring-[#00F0FF]`).",
+    "ai_chat": "Use neon magenta (`#FF0055`) accents. Tracing beam border for the AI Co-Designer panel."
+  },
+  "motion": {
+    "rules": [
+      "Hover states for all interactive elements.",
+      "Staggered entrance animations for bento grids.",
+      "Smooth state changes using framer-motion.",
+      "Do NOT apply `transition: all` globally.",
+      "Respect `prefers-reduced-motion`.",
+      "Scroll-triggered animations (Lenis momentum scrolling mandatory for Discovery Hub)."
+    ]
+  },
+  "3d_libraries": {
+    "primary": "@react-three/fiber and @react-three/drei",
+    "usage": "Use <Environment> for cinematic lighting, <Float> for floating products, and <ContactShadows> to ground them. Do NOT render empty black voids; use subtle lighting.",
+    "background": "tsparticles or framer-motion 3D for spatial atmospheric dust."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1659634088279-fc01616bad37?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwzfHxmdXR1cmlzdGljJTIwbW9kdWxhciUyMHByb2R1Y3QlMjAzRCUyMHJlbmRlcnxlbnwwfHx8fDE3NzQxODc0MjR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "White and black electronic devices (Futuristic Product Preview)",
+        "category": "Product Previews"
+      },
+      {
+        "url": "https://images.pexels.com/photos/4549831/pexels-photo-4549831.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Intricate futuristic circuit board with teal tones",
+        "category": "Textures / Materials"
+      },
+      {
+        "url": "https://images.pexels.com/photos/6727761/pexels-photo-6727761.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Dynamic abstract design with glowing neon cubes",
+        "category": "Hero Backgrounds / AI Co-Designer Backgrounds"
+      }
+    ],
+    "icons": "Use Phosphor Icons (@phosphor-icons/react) for Duotone high-end tech vibe."
+  },
+  "accessibility": {
+    "rules": [
+      "All interactive elements MUST include data-testid attributes (kebab-case, role-based).",
+      "Ensure color-blind friendly palettes in product customizer.",
+      "Maintain minimum 4.5:1 contrast for small text."
+    ]
+  },
+  "instructions_to_main_agent": [
+    "You must build a hybrid HTML/Tailwind + Shadcn structure. Use raw divs/sections for complex bento grids.",
+    "Do NOT use default Vercel-like aesthetics. Aetheris Spatial is a next-gen spatial marketplace.",
+    "For 3D elements, embed a `<Canvas>` from `@react-three/fiber` and populate it with modular meshes. Add orbital controls.",
+    "Inject 'Liquid Glass' classes heavily in headers and floating toolbars. DO NOT use complete transparent background in headers/overlays.",
+    "Include dynamic micro-interactions on product hover (scale up, neon glow).",
+    "Use Phosphor icons. You must `yarn add @phosphor-icons/react`.",
+    "Implement Lenis (`@studio-freight/react-lenis`) for smooth scrolling in the main Discovery Hub page.",
+    "You have .js files not .tsx files, so strictly write .js / .jsx code and do not output typescript types."
+  ],
+  "universal_guidelines": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Create depth through layered design elements with z-index hierarchy and glassmorphism.",
+    "You MUST NOT apply universal transition (`transition: all`). Add transitions explicitly.",
+    "You MUST NOT center align the app container (`.App { text-align: center; }`).",
+    "Always use modern button styles (pill-shaped or sharp) with interaction animations.",
+    "NEVER use AI assistant Emoji characters for icons.",
+    "Every interaction needs micro-animations.",
+    "Use sonner for toasts.",
+    "Components MUST use named exports, Pages MUST use default exports."
+  ]
+}
