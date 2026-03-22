@@ -19,10 +19,10 @@ export const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 liquid-glass" data-testid="main-navbar">
+    <nav className="fixed top-0 left-0 right-0 z-50 liquid-glass" data-testid="main-navbar" role="navigation" aria-label="Main navigation">
       <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to={user ? '/dashboard' : '/'} className="flex items-center gap-3 group" data-testid="navbar-logo">
+        <Link to={user ? '/dashboard' : '/'} className="flex items-center gap-3 group" data-testid="navbar-logo" aria-label="Aetheris Spatial - Home">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00F0FF] to-[#FF0055] flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
             <Cube size={18} weight="bold" className="text-black" />
           </div>
@@ -68,6 +68,7 @@ export const Navbar = () => {
                 <button
                   onClick={logout}
                   data-testid="logout-btn"
+                  aria-label="Sign out of your account"
                   className="p-2 rounded-full text-[#A1A1AA] hover:text-[#FF0055] hover:bg-[#FF0055]/10 transition-all duration-300"
                 >
                   <SignOut size={18} />
@@ -78,6 +79,9 @@ export const Navbar = () => {
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="md:hidden p-2 text-[#A1A1AA]"
                 data-testid="mobile-menu-toggle"
+                aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={mobileOpen}
+                aria-controls="mobile-nav-menu"
               >
                 {mobileOpen ? <X size={20} /> : <List size={20} />}
               </button>
@@ -96,7 +100,7 @@ export const Navbar = () => {
 
       {/* Mobile nav */}
       {mobileOpen && user && (
-        <div className="md:hidden px-6 pb-4 border-t border-white/5" data-testid="mobile-nav">
+        <div className="md:hidden px-6 pb-4 border-t border-white/5" data-testid="mobile-nav" id="mobile-nav-menu" role="menu">
           {navItems.map((item) => (
             <Link
               key={item.path}

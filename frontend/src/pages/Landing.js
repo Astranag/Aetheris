@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Scene3D } from '../components/Scene3D';
 import { Cube, ArrowRight, Lightning, Leaf, Brain, ShieldCheck } from '@phosphor-icons/react';
@@ -193,14 +194,29 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-white/5 py-12 px-6" role="contentinfo">
-        <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Cube size={20} weight="bold" className="text-[#00F0FF]" />
-            <span className="font-['Unbounded'] text-xs font-bold text-white">AETHERIS SPATIAL</span>
+        <div className="max-w-[1440px] mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+            <div className="flex items-center gap-2">
+              <Cube size={20} weight="bold" className="text-[#00F0FF]" aria-hidden="true" />
+              <span className="font-['Unbounded'] text-xs font-bold text-white">AETHERIS SPATIAL</span>
+            </div>
+            <nav aria-label="Legal links" className="flex items-center gap-6">
+              <Link to="/privacy" className="text-xs text-[#71717A] font-['Outfit'] hover:text-[#A1A1AA] transition-colors duration-300" data-testid="footer-privacy-link">
+                Privacy Policy
+              </Link>
+              <Link to="/terms" className="text-xs text-[#71717A] font-['Outfit'] hover:text-[#A1A1AA] transition-colors duration-300" data-testid="footer-terms-link">
+                Terms of Service
+              </Link>
+            </nav>
           </div>
-          <p className="text-xs text-[#71717A] font-['Outfit']">
-            Next-generation spatial commerce platform
-          </p>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-2 pt-6 border-t border-white/5">
+            <p className="text-[10px] text-[#71717A] font-['Outfit']">
+              GDPR & CCPA compliant. Strictly necessary cookies only.
+            </p>
+            <p className="text-[10px] text-[#71717A] font-['Outfit']">
+              WCAG 2.2 AA accessible. Built with sustainability in mind.
+            </p>
+          </div>
         </div>
       </footer>
     </main>

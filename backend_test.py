@@ -1,170 +1,210 @@
-#!/usr/bin/env python3
-
 import requests
 import sys
-import json
+import time
 from datetime import datetime
 
-class AetherisSpatialAPITester:
+class QualityComplianceAPITester:
     def __init__(self, base_url="https://modular-visualizer.preview.emergentagent.com"):
         self.base_url = base_url
-        self.api_url = f"{base_url}/api"
-        self.session_token = None
         self.tests_run = 0
         self.tests_passed = 0
-        self.test_results = []
+        self.results = []
 
-    def log_test(self, name, success, details="", expected_status=None, actual_status=None):
+    def log_result(self, test_name, passed, details=""):
         """Log test result"""
         self.tests_run += 1
-        if success:
+        if passed:
             self.tests_passed += 1
-            print(f"✅ {name} - PASSED")
+            print(f"✅ {test_name}")
         else:
-            print(f"❌ {name} - FAILED: {details}")
-            if expected_status and actual_status:
-                print(f"   Expected status: {expected_status}, Got: {actual_status}")
+            print(f"❌ {test_name} - {details}")
         
-        self.test_results.append({
-            "test": name,
-            "status": "PASSED" if success else "FAILED",
-            "details": details,
-            "expected_status": expected_status,
-            "actual_status": actual_status
+        self.results.append({
+            "test": test_name,
+            "passed": passed,
+            "details": details
         })
 
-    def test_api_endpoint(self, method, endpoint, expected_status, data=None, params=None, description=""):
-        """Generic API endpoint tester"""
-        url = f"{self.api_url}/{endpoint}"
-        headers = {'Content-Type': 'application/json'}
-        
-        if self.session_token:
-            headers['Authorization'] = f'Bearer {self.session_token}'
-
+    def test_health_endpoint(self):
+        """Test health check endpoint"""
         try:
-            if method == 'GET':
-                response = requests.get(url, headers=headers, params=params, timeout=10)
-            elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers, params=params, timeout=10)
-            elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers, params=params, timeout=10)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=headers, params=params, timeout=10)
-
-            success = response.status_code == expected_status
-            details = ""
-            
-            if not success:
-                try:
-                    error_data = response.json()
-                    details = f"Response: {error_data}"
-                except:
-                    details = f"Response text: {response.text[:200]}"
-            
-            test_name = f"{method} {endpoint}" + (f" - {description}" if description else "")
-            self.log_test(test_name, success, details, expected_status, response.status_code)
-            
-            return success, response.json() if success and response.content else {}
-
-        except Exception as e:
-            test_name = f"{method} {endpoint}" + (f" - {description}" if description else "")
-            self.log_test(test_name, False, f"Exception: {str(e)}")
-            return False, {}
-
-    def test_products_api(self):
-        """Test all product-related endpoints"""
-        print("\n🔍 Testing Product APIs...")
-        
-        # Test GET /api/products - should return seeded products
-        success, products = self.test_api_endpoint('GET', 'products', 200, description="Get all products")
-        if success and isinstance(products, list) and len(products) > 0:
-            print(f"   Found {len(products)} products")
-            # Check if we have the expected seeded product
-            desk_product = next((p for p in products if p.get('product_id') == 'prod_modular_desk_01'), None)
-            if desk_product:
-                print(f"   ✅ Found expected desk product: {desk_product.get('name')}")
+            response = requests.get(f"{self.base_url}/api/health", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                has_status = "status" in data and data["status"] == "healthy"
+                has_version = "version" in data
+                has_timestamp = "timestamp" in data
+                
+                if has_status and has_version and has_timestamp:
+                    self.log_result("Health endpoint returns healthy status with version and timestamp", True)
+                    return True
+                else:
+                    self.log_result("Health endpoint", False, f"Missing fields: status={has_status}, version={has_version}, timestamp={has_timestamp}")
             else:
-                print(f"   ⚠️  Expected 'prod_modular_desk_01' not found in products")
-        
-        # Test GET /api/categories
-        success, categories = self.test_api_endpoint('GET', 'categories', 200, description="Get product categories")
-        if success and isinstance(categories, list):
-            print(f"   Found categories: {categories}")
-        
-        # Test search functionality
-        success, search_results = self.test_api_endpoint('GET', 'products', 200, 
-                                                       params={'search': 'desk'}, 
-                                                       description="Search for 'desk'")
-        if success and isinstance(search_results, list):
-            print(f"   Search 'desk' returned {len(search_results)} results")
-        
-        # Test category filtering
-        success, furniture_products = self.test_api_endpoint('GET', 'products', 200, 
-                                                           params={'category': 'Furniture'}, 
-                                                           description="Filter by 'Furniture' category")
-        if success and isinstance(furniture_products, list):
-            print(f"   Furniture category returned {len(furniture_products)} results")
-        
-        # Test specific product retrieval
-        success, product_detail = self.test_api_endpoint('GET', 'products/prod_modular_desk_01', 200, 
-                                                       description="Get specific product")
-        if success and product_detail.get('product_id') == 'prod_modular_desk_01':
-            print(f"   ✅ Retrieved specific product: {product_detail.get('name')}")
+                self.log_result("Health endpoint", False, f"Status {response.status_code}")
+        except Exception as e:
+            self.log_result("Health endpoint", False, f"Error: {str(e)}")
+        return False
 
-    def test_auth_endpoints(self):
-        """Test authentication endpoints"""
-        print("\n🔐 Testing Auth APIs...")
-        
-        # Test /api/auth/me without authentication - should return 401
-        self.test_api_endpoint('GET', 'auth/me', 401, description="Get user info (unauthenticated)")
-        
-        # Test logout endpoint
-        self.test_api_endpoint('POST', 'auth/logout', 200, description="Logout")
+    def test_privacy_summary_endpoint(self):
+        """Test GDPR/CCPA privacy summary endpoint"""
+        try:
+            response = requests.get(f"{self.base_url}/api/legal/privacy-summary", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["data_controller", "data_collected", "lawful_basis", "rights", "gdpr_compliant", "ccpa_compliant"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if not missing_fields and isinstance(data.get("rights"), list):
+                    self.log_result("Privacy summary returns GDPR/CCPA compliance info with rights array", True)
+                    return True
+                else:
+                    self.log_result("Privacy summary endpoint", False, f"Missing fields: {missing_fields}")
+            else:
+                self.log_result("Privacy summary endpoint", False, f"Status {response.status_code}")
+        except Exception as e:
+            self.log_result("Privacy summary endpoint", False, f"Error: {str(e)}")
+        return False
 
-    def test_protected_endpoints(self):
-        """Test endpoints that require authentication"""
-        print("\n🔒 Testing Protected APIs (without auth - should fail)...")
-        
-        # These should all return 401 without proper authentication
-        protected_endpoints = [
-            ('GET', 'designs', 'Get user designs'),
-            ('GET', 'ai/history', 'Get AI chat history'),
-            ('GET', 'users/preferences', 'Get user preferences'),
-            ('GET', 'collections', 'Get design collections')
-        ]
-        
-        for method, endpoint, description in protected_endpoints:
-            self.test_api_endpoint(method, endpoint, 401, description=f"{description} (should be protected)")
+    def test_security_headers(self):
+        """Test security headers presence"""
+        try:
+            response = requests.get(f"{self.base_url}/api/health", timeout=10)
+            headers = response.headers
+            
+            required_headers = {
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY", 
+                "X-XSS-Protection": "1; mode=block",
+                "Strict-Transport-Security": None,  # Just check presence
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+                "Permissions-Policy": None  # Just check presence
+            }
+            
+            missing_headers = []
+            for header, expected_value in required_headers.items():
+                if header not in headers:
+                    missing_headers.append(header)
+                elif expected_value and headers[header] != expected_value:
+                    missing_headers.append(f"{header}={headers[header]} (expected {expected_value})")
+            
+            if not missing_headers:
+                self.log_result("Security headers present (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS, Referrer-Policy, Permissions-Policy)", True)
+                return True
+            else:
+                self.log_result("Security headers", False, f"Missing/incorrect: {missing_headers}")
+        except Exception as e:
+            self.log_result("Security headers", False, f"Error: {str(e)}")
+        return False
+
+    def test_rate_limiting(self):
+        """Test rate limiting on AI endpoint"""
+        try:
+            # Make rapid requests to trigger rate limit
+            for i in range(20):
+                response = requests.post(
+                    f"{self.base_url}/api/ai/chat",
+                    json={"message": f"test {i}"},
+                    timeout=5
+                )
+                if response.status_code == 429:
+                    self.log_result("Rate limiting returns 429 response after excessive requests to /api/ai/chat", True)
+                    return True
+                elif response.status_code == 401:
+                    # Expected for unauthenticated requests, continue testing
+                    continue
+                time.sleep(0.1)
+            
+            self.log_result("Rate limiting", False, "No 429 response received after 20 requests")
+        except Exception as e:
+            self.log_result("Rate limiting", False, f"Error: {str(e)}")
+        return False
+
+    def test_input_sanitization(self):
+        """Test input sanitization on search endpoint"""
+        try:
+            malicious_input = "<script>alert(1)</script>"
+            response = requests.get(
+                f"{self.base_url}/api/products",
+                params={"search": malicious_input},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                # Check that script tags are not in response and results are safe
+                response_text = response.text
+                if "<script>" not in response_text and "alert(1)" not in response_text:
+                    self.log_result("Input sanitization prevents script execution and returns safe results", True)
+                    return True
+                else:
+                    self.log_result("Input sanitization", False, "Script tags found in response")
+            else:
+                self.log_result("Input sanitization", False, f"Status {response.status_code}")
+        except Exception as e:
+            self.log_result("Input sanitization", False, f"Error: {str(e)}")
+        return False
+
+    def test_existing_product_apis(self):
+        """Test that existing product APIs still work"""
+        try:
+            # Test products list
+            response = requests.get(f"{self.base_url}/api/products", timeout=10)
+            if response.status_code == 200:
+                products = response.json()
+                if isinstance(products, list) and len(products) > 0:
+                    self.log_result("Product discovery still works: GET /api/products returns products", True)
+                else:
+                    self.log_result("Product discovery", False, "No products returned")
+                    return False
+            else:
+                self.log_result("Product discovery", False, f"Status {response.status_code}")
+                return False
+
+            # Test specific product
+            response = requests.get(f"{self.base_url}/api/products/prod_modular_desk_01", timeout=10)
+            if response.status_code == 200:
+                product = response.json()
+                if "product_id" in product and product["product_id"] == "prod_modular_desk_01":
+                    self.log_result("Product detail still works: GET /api/products/prod_modular_desk_01", True)
+                    return True
+                else:
+                    self.log_result("Product detail", False, "Invalid product data")
+            else:
+                self.log_result("Product detail", False, f"Status {response.status_code}")
+        except Exception as e:
+            self.log_result("Existing product APIs", False, f"Error: {str(e)}")
+        return False
 
     def run_all_tests(self):
-        """Run all API tests"""
-        print("🚀 Starting Aetheris Spatial API Tests")
-        print(f"Testing against: {self.base_url}")
+        """Run all backend tests"""
+        print("🔍 Testing Aetheris Spatial - Quality & Compliance Layer")
         print("=" * 60)
         
-        # Test product APIs (public endpoints)
-        self.test_products_api()
+        # Test new quality/compliance features
+        self.test_health_endpoint()
+        self.test_privacy_summary_endpoint()
+        self.test_security_headers()
+        self.test_rate_limiting()
+        self.test_input_sanitization()
         
-        # Test auth endpoints
-        self.test_auth_endpoints()
+        # Test existing functionality still works
+        self.test_existing_product_apis()
         
-        # Test protected endpoints (should fail without auth)
-        self.test_protected_endpoints()
-        
-        # Print summary
         print("\n" + "=" * 60)
-        print(f"📊 Test Summary: {self.tests_passed}/{self.tests_run} tests passed")
+        print(f"📊 Backend Tests: {self.tests_passed}/{self.tests_run} passed")
         
-        if self.tests_passed == self.tests_run:
-            print("🎉 All tests passed!")
-            return 0
-        else:
-            print(f"❌ {self.tests_run - self.tests_passed} tests failed")
-            return 1
+        return self.tests_passed, self.tests_run, self.results
 
 def main():
-    tester = AetherisSpatialAPITester()
-    return tester.run_all_tests()
+    tester = QualityComplianceAPITester()
+    passed, total, results = tester.run_all_tests()
+    
+    if passed == total:
+        print("🎉 All backend tests passed!")
+        return 0
+    else:
+        print(f"⚠️  {total - passed} tests failed")
+        return 1
 
 if __name__ == "__main__":
     sys.exit(main())

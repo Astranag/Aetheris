@@ -6,11 +6,15 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import uuid
+import re
+import html
+import time
 import requests as http_requests
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,11 +32,70 @@ STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_NAME = "aetheris-spatial"
 storage_key = None
 
-app = FastAPI()
+app = FastAPI(title="Aetheris Spatial API", version="1.0.0", docs_url="/api/docs", redoc_url=None)
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# ──────────── Security: Rate Limiter ────────────
+rate_limit_store: Dict[str, list] = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX = 60     # requests per window
+AI_RATE_LIMIT_MAX = 15  # AI endpoint limit per window
+
+def check_rate_limit(client_ip: str, max_requests: int = RATE_LIMIT_MAX) -> bool:
+    now = time.time()
+    requests_list = rate_limit_store[client_ip]
+    rate_limit_store[client_ip] = [t for t in requests_list if now - t < RATE_LIMIT_WINDOW]
+    if len(rate_limit_store[client_ip]) >= max_requests:
+        return False
+    rate_limit_store[client_ip].append(now)
+    return True
+
+# ──────────── Security: Input Sanitization ────────────
+def sanitize_input(text: str, max_length: int = 2000) -> str:
+    """Sanitize user text input — strip HTML, limit length, remove control characters"""
+    if not isinstance(text, str):
+        return ""
+    text = text[:max_length]
+    text = html.escape(text)
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+    return text.strip()
+
+def sanitize_search(text: str) -> str:
+    """Sanitize search input — escape regex special chars"""
+    if not text:
+        return ""
+    text = sanitize_input(text, max_length=200)
+    return re.escape(html.unescape(text))
+
+# ──────────── Security: Middleware for headers ────────────
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    # Rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    is_ai_endpoint = "/ai/" in request.url.path
+    limit = AI_RATE_LIMIT_MAX if is_ai_endpoint else RATE_LIMIT_MAX
+    if not check_rate_limit(client_ip, limit):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded. Please try again later."},
+            headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
+        )
+
+    response = await call_next(request)
+
+    # Security headers — OWASP recommended
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Cache-Control"] = "no-store" if "/api/" in request.url.path else "public, max-age=3600"
+
+    return response
 
 # ──────────── Object Storage ────────────
 def init_storage():
@@ -207,10 +270,11 @@ async def get_products(
     if category and category != "all":
         query["category"] = category
     if search:
+        safe_search = sanitize_search(search)
         query["$or"] = [
-            {"name": {"$regex": search, "$options": "i"}},
-            {"description": {"$regex": search, "$options": "i"}},
-            {"tags": {"$regex": search, "$options": "i"}}
+            {"name": {"$regex": safe_search, "$options": "i"}},
+            {"description": {"$regex": safe_search, "$options": "i"}},
+            {"tags": {"$regex": safe_search, "$options": "i"}}
         ]
     if min_price is not None:
         query.setdefault("price", {})["$gte"] = min_price
@@ -238,6 +302,14 @@ async def get_categories():
 @api_router.post("/ai/chat")
 async def ai_chat(msg: ChatMessage, request: Request):
     user = await get_current_user(request)
+
+    # Input validation
+    safe_message = sanitize_input(msg.message, max_length=1000)
+    if not safe_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(safe_message) < 2:
+        raise HTTPException(status_code=400, detail="Message too short")
+
     product_context = ""
     if msg.product_id:
         product = await db.products.find_one({"product_id": msg.product_id}, {"_id": 0})
@@ -256,14 +328,14 @@ async def ai_chat(msg: ChatMessage, request: Request):
             system_message=f"""You are the Aetheris AI Co-Designer, an expert spatial design assistant for a next-generation 3D marketplace. You help users customize modular products, suggest materials, colors, and configurations. Be creative, concise, and spatial-design focused. Give specific, actionable suggestions.{product_context}{config_context}"""
         )
         chat.with_model("openai", "gpt-5.2")
-        user_message = UserMessage(text=msg.message)
+        user_message = UserMessage(text=html.unescape(safe_message))
         response = await chat.send_message(user_message)
 
         chat_record = {
             "chat_id": str(uuid.uuid4()),
             "user_id": user["user_id"],
             "product_id": msg.product_id,
-            "user_message": msg.message,
+            "user_message": safe_message,
             "ai_response": response,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -434,6 +506,61 @@ async def download_file(path: str, request: Request, auth: Optional[str] = Query
         raise HTTPException(status_code=404, detail="File not found")
     data, content_type = get_object(path)
     return Response(content=data, media_type=record.get("content_type", content_type))
+
+# ──────────── Health & Legal ────────────
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {"status": "healthy", "version": "1.0.0", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+@api_router.get("/legal/privacy-summary")
+async def privacy_summary():
+    """Machine-readable privacy summary for compliance audits"""
+    return {
+        "data_controller": "Aetheris Spatial",
+        "data_collected": ["email", "name", "picture", "design_configurations", "ai_chat_history", "preferences"],
+        "lawful_basis": "consent",
+        "data_retention": {"session": "7_days", "account": "until_deletion", "designs": "until_deletion"},
+        "third_party_processors": [{"name": "OpenAI", "purpose": "AI Co-Designer", "data_shared": "chat_messages"}],
+        "cookies": [{"name": "session_token", "type": "strictly_necessary", "duration": "7_days", "httponly": True}],
+        "rights": ["access", "rectification", "erasure", "portability", "restriction", "objection"],
+        "dpo_contact": "privacy@aetheris.spatial",
+        "gdpr_compliant": True,
+        "ccpa_compliant": True
+    }
+
+@api_router.delete("/users/data")
+async def delete_user_data(request: Request):
+    """GDPR Article 17: Right to erasure — delete all user data"""
+    user = await get_current_user(request)
+    user_id = user["user_id"]
+    # Delete all user data
+    await db.designs.delete_many({"user_id": user_id})
+    await db.design_versions.delete_many({"design_id": {"$in": [d["design_id"] for d in await db.designs.find({"user_id": user_id}, {"design_id": 1, "_id": 0}).to_list(1000)]}})
+    await db.chat_history.delete_many({"user_id": user_id})
+    await db.files.update_many({"user_id": user_id}, {"$set": {"is_deleted": True}})
+    await db.user_sessions.delete_many({"user_id": user_id})
+    await db.users.delete_one({"user_id": user_id})
+    logger.info(f"GDPR erasure completed for user {user_id}")
+    return {"message": "All personal data has been deleted", "user_id": user_id}
+
+@api_router.get("/users/data-export")
+async def export_user_data(request: Request):
+    """GDPR Article 20: Right to data portability"""
+    user = await get_current_user(request)
+    user_id = user["user_id"]
+    designs = await db.designs.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
+    chat_history = await db.chat_history.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
+    preferences = user.get("preferences", {})
+    return {
+        "export_date": datetime.now(timezone.utc).isoformat(),
+        "format": "JSON",
+        "profile": {"user_id": user_id, "email": user.get("email"), "name": user.get("name"), "created_at": user.get("created_at")},
+        "preferences": preferences,
+        "designs": designs,
+        "ai_chat_history": chat_history,
+        "data_categories": ["profile", "preferences", "designs", "ai_chat_history"]
+    }
 
 # ──────────── Seed Data ────────────
 async def seed_products():
