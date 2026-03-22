@@ -41,8 +41,8 @@ logger = logging.getLogger(__name__)
 # ──────────── Security: Rate Limiter ────────────
 rate_limit_store: Dict[str, list] = defaultdict(list)
 RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX = 60     # requests per window
-AI_RATE_LIMIT_MAX = 15  # AI endpoint limit per window
+RATE_LIMIT_MAX = 120    # requests per window (generous for browsing)
+AI_RATE_LIMIT_MAX = 20  # AI endpoint limit per window
 
 def check_rate_limit(client_ip: str, max_requests: int = RATE_LIMIT_MAX) -> bool:
     now = time.time()
@@ -73,11 +73,23 @@ def sanitize_search(text: str) -> str:
 # ──────────── Security: Middleware for headers ────────────
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
-    # Rate limiting
+    # Rate limiting — separate buckets for AI vs general
     client_ip = request.client.host if request.client else "unknown"
-    is_ai_endpoint = "/ai/" in request.url.path
-    limit = AI_RATE_LIMIT_MAX if is_ai_endpoint else RATE_LIMIT_MAX
-    if not check_rate_limit(client_ip, limit):
+    path = str(request.url.path)
+    is_ai_endpoint = "/api/ai/" in path
+    
+    if is_ai_endpoint:
+        # AI endpoints have their own rate limit bucket
+        ai_key = f"ai:{client_ip}"
+        if not check_rate_limit(ai_key, AI_RATE_LIMIT_MAX):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "AI rate limit exceeded. Please try again later."},
+                headers={"Retry-After": str(RATE_LIMIT_WINDOW)}
+            )
+    
+    # General rate limit for all endpoints
+    if not check_rate_limit(client_ip, RATE_LIMIT_MAX):
         return JSONResponse(
             status_code=429,
             content={"detail": "Rate limit exceeded. Please try again later."},

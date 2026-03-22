@@ -35,17 +35,42 @@ Build Aetheris Spatial — a next-generation web experience where users explore,
 - Designs: POST/GET/DELETE /api/designs, GET /api/designs/:id/versions, GET /api/collections
 - Users: GET/PUT /api/users/preferences, PUT /api/users/profile
 - Upload: POST /api/upload, GET /api/files/:path
-- Seed: 6 products (Nexus Desk, Aero Chair, Lumina Panel, Hexa Storage, Silencia Pod, Verdant Planter)
+- Health: GET /api/health
+- Legal: GET /api/legal/privacy-summary, DELETE /api/users/data (GDPR erasure), GET /api/users/data-export (portability)
+- Security: Rate limiting (120/min general, 20/min AI), input sanitization, security headers (HSTS, X-Frame, X-Content-Type, X-XSS, Referrer-Policy, Permissions-Policy)
+- Seed: 6 products
 
 ### Frontend (React)
-- Landing page with 3D hero, feature bento grid, CTA buttons
+- Landing page with 3D hero, feature bento grid, CTA buttons, legal footer
 - Discovery Hub with product cards (CSS lightweight), search, categories, sort
 - Product Detail with 3D viewer, color/material/size selectors, save-to-vault
 - Creator Studio with 3D canvas, shape/color/material customizer, AI chat sidebar
 - Design Vault with cards, version history, collections, delete/share
 - Settings with profile edit, AI personality, density, toggles
-- Navbar with active state, mobile responsive menu
+- Privacy Policy page (GDPR Article 12-23 compliant)
+- Terms of Service page (IP, acceptable use, AI content, liability, termination)
+- 404 Not Found page
+- Cookie consent banner (GDPR/ePrivacy compliant)
+- Error boundary (graceful crash recovery)
+- Navbar with ARIA roles, mobile menu, active state
 - Auth flow (Google Auth redirect + callback + session)
+
+### Accessibility (WCAG 2.2 AA)
+- Skip-to-content link (2.4.1)
+- Focus-visible indicators (2.4.7)
+- prefers-reduced-motion support (2.3.3)
+- forced-colors/high-contrast support
+- Minimum 44px touch targets (2.5.8)
+- ARIA roles, labels, pressed/checked states
+- Semantic HTML (main, nav, article, fieldset, dl/dt/dd)
+- aria-live regions for dynamic content
+- aria-expanded for collapsible sections
+
+### Legal Compliance
+- GDPR (EU 2016/679): Privacy Policy, data rights, erasure, portability, cookie notice
+- CCPA (California Civil Code 1798.100): Privacy summary API
+- ePrivacy: Cookie consent banner
+- AI transparency: Terms covering AI-generated content disclaimers
 
 ## Prioritized Backlog
 ### P0 (Critical)
