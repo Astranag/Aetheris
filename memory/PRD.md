@@ -1,100 +1,74 @@
-# Aetheris Spatial - AI-Native 3D Marketplace PRD
+# Aetheris Spatial — Product Requirements Document
 
 ## Original Problem Statement
-Build Aetheris Spatial — a next-generation web experience where users explore, customize, and visualize modular products in real-time 3D. The platform blends immersive UI, AI-driven personalization, and fluid spatial interactions. Must fundamentally surpass OpenSea.
+AI-Native 3D Marketplace blending immersive UI, AI-driven personalization, and real-time 3D product previews. Key features: Discovery Hub, Creator Studio, Product Detail Page, Design Vault, Account/Settings, Admin Control Nexus with Dimensional Console.
 
-## Architecture
-- **Frontend**: React 19 + Vanilla Three.js + Tailwind CSS + Shadcn/UI + Framer Motion
-- **Backend**: FastAPI + MongoDB (Motor async) + emergentintegrations (GPT-5.2)
-- **Auth**: Emergent Google Auth (session-based)
+## Core Architecture
+- **Frontend**: React 19, Tailwind CSS, Framer Motion, Vanilla Three.js (no @react-three/fiber), Recharts, Phosphor Icons
+- **Backend**: FastAPI, Motor (async MongoDB)
+- **AI**: GPT-5.2 via Emergent LLM Key
+- **Auth**: Emergent Google Auth
 - **Storage**: Emergent Object Storage
-- **3D**: Vanilla Three.js (bypasses R3F React 19 compatibility issues)
+- **Design**: Dark futuristic spatial computing aesthetic
 
-## User Personas
-1. **Creative Professionals** - Designers/architects customizing modular products
-2. **Tech-Savvy Consumers** - Users who want spatial 3D product visualization
-3. **Sustainability-Conscious Buyers** - Users filtering by sustainability score
+## Implemented Features
 
-## Core Requirements
-- [x] Discovery Hub with bento grid, search, filters, categories, sort
-- [x] Creator Studio with real-time 3D customization + AI Co-Designer (GPT-5.2)
-- [x] Product Detail with 3D viewer, material/color/size selectors, sustainability score
-- [x] Design Vault with saved designs, version history, collections, sharing
-- [x] Account & Settings with profile, AI personalization, preferences
-- [x] Google Auth with session management
-- [x] Object storage for file uploads
-- [x] Full accessibility (ARIA labels, semantic HTML, roles, keyboard nav)
-- [x] Dark futuristic spatial theme (Unbounded + Outfit + JetBrains Mono fonts)
-- [x] 6 seeded products across 5 categories
+### Phase 1 — Core Platform (DONE)
+- React + FastAPI + MongoDB boilerplate
+- Vanilla Three.js 3D viewer (Scene3D.js)
+- Product catalog with seed data (6 products)
+- Discovery Hub with search/filter/sort
+- Product Detail page
+- Creator Studio with AI Co-Designer (GPT-5.2)
+- Design Vault with versioning and collections
+- User Settings and Preferences
+- Emergent Google Auth integration
+- Object Storage for file uploads
 
-## What's Been Implemented (March 22, 2026)
-### Backend (FastAPI)
-- Auth: POST /api/auth/session, GET /api/auth/me, POST /api/auth/logout
-- Products: GET /api/products (search, filter, sort), GET /api/products/:id, GET /api/categories
-- AI: POST /api/ai/chat (GPT-5.2), GET /api/ai/history
-- Designs: POST/GET/DELETE /api/designs, GET /api/designs/:id/versions, GET /api/collections
-- Users: GET/PUT /api/users/preferences, PUT /api/users/profile
-- Upload: POST /api/upload, GET /api/files/:path
-- Health: GET /api/health
-- Legal: GET /api/legal/privacy-summary, DELETE /api/users/data (GDPR erasure), GET /api/users/data-export (portability)
-- Security: Rate limiting (120/min general, 20/min AI), input sanitization, security headers (HSTS, X-Frame, X-Content-Type, X-XSS, Referrer-Policy, Permissions-Policy)
-- Seed: 6 products
+### Phase 2 — Legal, A11y & Quality (DONE)
+- WCAG 2.2 AA accessibility layer
+- GDPR compliance (cookie consent, data export, erasure)
+- Privacy Policy and Terms of Service pages
+- Security headers (OWASP)
+- Rate limiting (general + AI endpoints)
+- Input sanitization
 
-### Frontend (React)
-- Landing page with 3D hero, feature bento grid, CTA buttons, legal footer
-- Discovery Hub with product cards (CSS lightweight), search, categories, sort
-- Product Detail with 3D viewer, color/material/size selectors, save-to-vault
-- Creator Studio with 3D canvas, shape/color/material customizer, AI chat sidebar
-- Design Vault with cards, version history, collections, delete/share
-- Settings with profile edit, AI personality, density, toggles
-- Privacy Policy page (GDPR Article 12-23 compliant)
-- Terms of Service page (IP, acceptable use, AI content, liability, termination)
-- 404 Not Found page
-- Cookie consent banner (GDPR/ePrivacy compliant)
-- Error boundary (graceful crash recovery)
-- Navbar with ARIA roles, mobile menu, active state
-- Auth flow (Google Auth redirect + callback + session)
+### Phase 3 — Spatial Intelligence Protocol (DONE)
+- Multi-agent AI routing (Design/Material/Style/Spatial/Generative)
+- Structured JSON action payloads from AI
+- Product recommendations engine (stub)
+- Public Spatial Intelligence API
+- Aetheris Ontology system
 
-### Accessibility (WCAG 2.2 AA)
-- Skip-to-content link (2.4.1)
-- Focus-visible indicators (2.4.7)
-- prefers-reduced-motion support (2.3.3)
-- forced-colors/high-contrast support
-- Minimum 44px touch targets (2.5.8)
-- ARIA roles, labels, pressed/checked states
-- Semantic HTML (main, nav, article, fieldset, dl/dt/dd)
-- aria-live regions for dynamic content
-- aria-expanded for collapsible sections
+### Phase 4 — Admin Control Nexus (DONE - March 22, 2026)
+- Admin auth with JWT (hardcoded admin: meta360d@gmail.com)
+- **Panel 1**: System Overview & Health Monitor (CPU, Memory, Disk, DB metrics, stat cards, ontology summary)
+- **Panel 2**: User Intelligence Matrix (user engagement bar charts, user table with design/chat counts)
+- **Panel 3**: Design & Product Management (category pie chart, full designs table)
+- **Panel 4**: AI Agent Control Center (5 agent mode status, conversation flow area chart, chat log with action payloads)
+- **Panel 5**: Spatial Intelligence Analytics (shapes, materials, colors, dimensional extensions, sustainability vectors, constraint framework)
+- **Panel 6**: Security & Compliance (GDPR/CCPA/WCAG/Cookie compliance status, security headers, rate limits, admin login history, active sessions)
+- **Hidden Dimensional Console**: Super-Admin ontology editor (Ctrl+Shift+D), live add/remove shapes/materials/colors/extensions
 
-### Legal Compliance
-- GDPR (EU 2016/679): Privacy Policy, data rights, erasure, portability, cookie notice
-- CCPA (California Civil Code 1798.100): Privacy summary API
-- ePrivacy: Cookie consent banner
-- AI transparency: Terms covering AI-generated content disclaimers
+## Pending / In Progress
 
-## Prioritized Backlog
-### P0 (Critical)
-- None remaining
+### P1 — Voice Input for Spatial Commands (NOT STARTED)
+- Web Speech API integration in Creator Studio
+- Route voice commands to AI Co-Designer
 
-### P1 (Important)
-- Voice input for AI Co-Designer
-- Smart search with AI (natural language product queries)
-- Personalized product recommendations based on browsing history
-- Mood-adaptive UI (color/density/typography based on user behavior)
+### P1 — Product Recommendations Engine (IN PROGRESS)
+- Backend stubs exist, frontend Discovery Hub integration pending
 
-### P2 (Nice to Have)
-- Gesture input for 3D manipulation
-- GLTF/GLB model loading support
-- Product comparison view
-- Social sharing with 3D preview cards (Open Graph)
-- WebGPU renderer upgrade
-- Scroll-triggered animations for product reveal
+### P1 — N-Dimensional Visualization (NOT STARTED)
+- Parameter space exploration for design variants
 
-## Next Tasks
-1. Add smart AI-powered search using GPT-5.2 natural language queries
-2. Implement product recommendations engine based on browsing/design history
-3. Add GLTF/GLB model loading for real product 3D models
-4. Build social sharing with OG image generation from 3D snapshots
-5. Add voice input for AI Co-Designer (Web Speech API)
-6. Implement n-dimensional parameter space visualization for design variants
-7. Add axe-core accessibility audit automation in CI/CD
+## Future / Backlog
+- P2: Public API payload format for Figma/AR tools
+- P2: Design Marketplace (publish/sell configurations)
+- P2: Compliance Dashboard in user settings (GDPR self-service)
+
+## Key Technical Notes
+- **DO NOT** use @react-three/fiber or multiple <Canvas> elements — causes crashes
+- Admin credentials: meta360d@gmail.com / Adimnaetheris
+- All 3D rendering via Vanilla Three.js in Scene3D.js
+- Recharts for admin dashboard analytics charts
