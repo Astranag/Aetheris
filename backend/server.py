@@ -311,6 +311,74 @@ async def get_categories():
     return categories
 
 # ──────────── AI Co-Designer ────────────
+
+# The Aetheris Spatial Intelligence Protocol — Master System Prompt
+AETHERIS_SYSTEM_PROMPT = """You are an AETHERIS SPATIAL Agent — a multimodal, multidimensional reasoning entity operating inside a spatial intelligence ecosystem.
+
+You think in geometry, relationships, constraints, and transformations. Not flat text.
+
+CORE CAPABILITIES:
+• Spatial reasoning (3D, 4D, n-dimensional, parametric, symbolic)
+• Generative creativity & constraint satisfaction
+• User preference modeling & sustainability optimization
+• Marketplace intelligence
+
+AGENT MODES (auto-select based on request):
+• Design Agent — geometry, form, structure
+• Material Agent — sustainability, textures, composites
+• Style Agent — aesthetics, mood, identity
+• Spatial Agent — layouts, ergonomics, room logic
+• Generative Agent — new shapes, new categories, new concepts
+
+INPUT INTERPRETATION:
+Extract from every user message: INTENT (what they want), CONSTRAINTS (limits/preferences), CONTEXT (current design state), OBJECTIVE (desired outcome).
+
+OUTPUT FORMAT — You MUST structure EVERY response with these sections using the exact markers:
+
+[INTERPRETATION]
+What the user is REALLY asking for — 1-2 sentences.
+
+[MODE]
+Which agent mode(s) you activated — e.g. "Design Agent + Material Agent"
+
+[REASONING]
+How you understand the request spatially/dimensionally — 2-3 sentences.
+
+[TRANSFORMS]
+Clear, numbered modifications or generative actions. Be specific — name exact colors, materials, dimensions, shapes.
+
+[VARIANTS]
+2-3 alternative directions labeled: MINIMAL / BOLD / EXPERIMENTAL
+
+[ACTION]
+```json
+{
+  "action": "modify",
+  "target": "shape",
+  "parameters": {
+    "shape": "desk",
+    "color": "#00F0FF",
+    "colorName": "Neon Cyan",
+    "material": "Bamboo Composite",
+    "notes": "explanation"
+  }
+}
+```
+
+VALID action values: modify | generate | optimize | analyze
+VALID target values: shape | material | color | layout | environment | concept
+VALID shape values: desk | chair | panel | hexagon | pod | cylinder
+VALID color hex values: #00F0FF | #FF0055 | #1a1a1a | #e8e8e8 | #0066FF | #2d5a27 | #ffb347 | #ff6b35
+VALID material values: Bamboo Composite | Recycled Aluminum | Bio-Resin | Cork | Smart Foam | Carbon Fiber | Organic Cotton
+
+BEHAVIORAL RULES:
+• Never say "I can't imagine that."
+• Always propose at least one idea that pushes boundaries.
+• Always optimize for sustainability unless told otherwise.
+• Be concise but rich in spatial logic.
+• The [ACTION] JSON block must contain ONLY valid values from the lists above so the 3D engine can apply them.
+"""
+
 @api_router.post("/ai/chat")
 async def ai_chat(msg: ChatMessage, request: Request):
     user = await get_current_user(request)
@@ -326,22 +394,43 @@ async def ai_chat(msg: ChatMessage, request: Request):
     if msg.product_id:
         product = await db.products.find_one({"product_id": msg.product_id}, {"_id": 0})
         if product:
-            product_context = f"\nCurrent product: {product['name']} - {product['description']}. Materials: {', '.join(product.get('materials', []))}. Colors: {', '.join(product.get('colors', []))}."
+            product_context = f"\n\nACTIVE PRODUCT CONTEXT:\nProduct: {product['name']}\nDescription: {product['description']}\nCategory: {product['category']}\nMaterials: {', '.join(product.get('materials', []))}\nColors: {', '.join(product.get('colors', []))}\nSizes: {', '.join(product.get('sizes', []))}\nSustainability: {product.get('sustainability_score', 'N/A')}/100\nShape: {product.get('shape', 'desk')}"
 
     config_context = ""
     if msg.context:
-        config_context = f"\nCurrent configuration: {msg.context}"
+        config_context = f"\n\nCURRENT CONFIGURATION STATE:\nShape: {msg.context.get('shape', 'unknown')}\nColor: {msg.context.get('color', 'unknown')}\nMaterial: {msg.context.get('material', 'unknown')}"
+
+    # Load user preferences for personalization
+    user_prefs = user.get("preferences", {})
+    personality = user_prefs.get("ai_personality", "creative")
+    personality_context = {
+        "creative": "\nPERSONALITY MODE: Creative — be imaginative, suggest unexpected combinations, push dimensional boundaries.",
+        "minimal": "\nPERSONALITY MODE: Minimal — focus on clean, essential forms. Less is more. Subtract before adding.",
+        "technical": "\nPERSONALITY MODE: Technical — provide precise specifications, dimensional data, material properties, and engineering rationale."
+    }.get(personality, "")
+
+    full_system = AETHERIS_SYSTEM_PROMPT + product_context + config_context + personality_context
 
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=f"aetheris_{user['user_id']}_{msg.product_id or 'general'}",
-            system_message=f"""You are the Aetheris AI Co-Designer, an expert spatial design assistant for a next-generation 3D marketplace. You help users customize modular products, suggest materials, colors, and configurations. Be creative, concise, and spatial-design focused. Give specific, actionable suggestions.{product_context}{config_context}"""
+            system_message=full_system
         )
         chat.with_model("openai", "gpt-5.2")
         user_message = UserMessage(text=html.unescape(safe_message))
         response = await chat.send_message(user_message)
+
+        # Parse action payload from response if present
+        action_payload = None
+        try:
+            import json as json_mod
+            if '```json' in response:
+                json_block = response.split('```json')[1].split('```')[0].strip()
+                action_payload = json_mod.loads(json_block)
+        except Exception:
+            pass
 
         chat_record = {
             "chat_id": str(uuid.uuid4()),
@@ -349,11 +438,16 @@ async def ai_chat(msg: ChatMessage, request: Request):
             "product_id": msg.product_id,
             "user_message": safe_message,
             "ai_response": response,
+            "action_payload": action_payload,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.chat_history.insert_one(chat_record)
 
-        return {"response": response, "chat_id": chat_record["chat_id"]}
+        return {
+            "response": response,
+            "action_payload": action_payload,
+            "chat_id": chat_record["chat_id"]
+        }
     except Exception as e:
         logger.error(f"AI chat error: {e}")
         raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
