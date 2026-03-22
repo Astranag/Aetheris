@@ -51,10 +51,10 @@ export const Footer = () => (
         <Link
           to="/admin"
           data-testid="footer-admin-link"
-          className="flex items-center gap-1.5 text-[10px] font-['JetBrains_Mono'] text-[var(--text-muted)] opacity-40 hover:opacity-100 hover:text-[var(--brand-ai)] transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-['JetBrains_Mono'] text-[var(--text-muted)] hover:text-[var(--brand-ai)] hover:bg-[var(--brand-ai)]/10 border border-transparent hover:border-[var(--brand-ai)]/20 transition-all"
         >
-          <ShieldCheck size={12} />
-          Admin
+          <ShieldCheck size={14} />
+          Admin Console
         </Link>
       </div>
     </div>
