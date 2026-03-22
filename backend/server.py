@@ -882,7 +882,6 @@ async def track_view(request: Request):
     product_id = body.get("product_id")
     if not product_id:
         return {"status": "ignored"}
-    # Get user if authenticated
     user_id = None
     try:
         user = await get_current_user(request)
@@ -895,11 +894,16 @@ async def track_view(request: Request):
         "user_id": user_id,
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
+    # Record in spatial memory
+    if user_id:
+        from memory_engine import MemoryEngine
+        mem = MemoryEngine(db)
+        await mem.record_interaction(user_id, "product_view", {"product_id": product_id})
     return {"status": "tracked"}
 
 @api_router.get("/recommendations")
 async def get_recommendations(request: Request, product_id: Optional[str] = None):
-    """AI-driven product recommendations from browsing + design history"""
+    """AI-driven product recommendations from browsing + design + memory profile"""
     user_id = None
     try:
         user = await get_current_user(request)
@@ -907,36 +911,133 @@ async def get_recommendations(request: Request, product_id: Optional[str] = None
     except Exception:
         pass
 
-    recommendations = []
-    
-    if user_id:
-        # Get user's design history for preference modeling
-        user_designs = await db.designs.find({"user_id": user_id}, {"_id": 0}).to_list(20)
-        user_views = await db.tracking.find({"user_id": user_id, "event": "product_view"}, {"_id": 0}).sort("timestamp", -1).to_list(20)
-        
-        # Extract preferred categories/materials from designs
-        preferred_categories = set()
-        viewed_products = set()
-        for d in user_designs:
-            if d.get("configuration", {}).get("material"):
-                pass  # Use for material preference
-        for v in user_views:
-            viewed_products.add(v.get("product_id"))
-        
-        # Get products NOT yet viewed by user
-        query = {}
-        if viewed_products and product_id:
-            query["product_id"] = {"$nin": list(viewed_products), "$ne": product_id}
-        elif product_id:
-            query["product_id"] = {"$ne": product_id}
-        
-        recommendations = await db.products.find(query, {"_id": 0}).sort("sustainability_score", -1).to_list(4)
-    
-    if not recommendations:
-        query = {"product_id": {"$ne": product_id}} if product_id else {}
-        recommendations = await db.products.find(query, {"_id": 0}).sort("sustainability_score", -1).to_list(4)
+    all_products = await db.products.find({}, {"_id": 0}).to_list(100)
 
-    return recommendations
+    if user_id and len(all_products) > 0:
+        from memory_engine import MemoryEngine
+        mem = MemoryEngine(db)
+        # Score all products
+        scored = []
+        for p in all_products:
+            if p["product_id"] == product_id:
+                continue
+            score = await mem.compute_similarity(user_id, p)
+            scored.append({**p, "_score": score})
+        scored.sort(key=lambda x: x["_score"], reverse=True)
+        # Remove internal score field
+        result = [{k: v for k, v in p.items() if k != "_score"} for p in scored[:6]]
+        return result
+
+    # Fallback: sustainability-sorted, exclude current product
+    fallback = [p for p in all_products if p.get("product_id") != product_id]
+    fallback.sort(key=lambda x: x.get("sustainability_score", 0), reverse=True)
+    return fallback[:6]
+
+# ──────────── Memory Architecture API ────────────
+@api_router.get("/memory/profile")
+async def get_memory_profile(request: Request):
+    """Get user's computed spatial memory profile — preferences, affinities, engagement."""
+    user = await get_current_user(request)
+    from memory_engine import MemoryEngine
+    mem = MemoryEngine(db)
+    profile = await mem.compute_user_profile(user["user_id"])
+    return profile
+
+@api_router.post("/memory/context")
+async def store_memory_context(request: Request):
+    """Store session-level spatial context for continuity."""
+    user = await get_current_user(request)
+    body = await request.json()
+    from memory_engine import MemoryEngine
+    mem = MemoryEngine(db)
+    await mem.store_session_context(user["user_id"], body.get("context", {}))
+    return {"status": "stored"}
+
+@api_router.get("/memory/ai-context")
+async def get_ai_context(request: Request):
+    """Get AI personalization context from user memory — used by AI chat."""
+    user = await get_current_user(request)
+    from memory_engine import MemoryEngine
+    mem = MemoryEngine(db)
+    prompt = await mem.get_ai_context_prompt(user["user_id"])
+    return {"context_prompt": prompt}
+
+# ──────────── Tool Schemas & Function Templates API ────────────
+@api_router.get("/schemas")
+async def get_schemas():
+    """Public endpoint: all Aetheris tool schemas and function-calling templates."""
+    from tool_schemas import get_all_schemas
+    return get_all_schemas()
+
+@api_router.post("/schemas/validate")
+async def validate_payload(request: Request):
+    """Validate an action payload against Aetheris schemas."""
+    body = await request.json()
+    from tool_schemas import validate_action_payload
+    result = validate_action_payload(body.get("payload", body))
+    return result
+
+# ──────────── Generative Geometry DSL API ────────────
+@api_router.post("/dsl/evaluate")
+async def dsl_evaluate(request: Request):
+    """Evaluate a Generative Geometry DSL expression."""
+    body = await request.json()
+    expression = body.get("expression", "")
+    variables = body.get("variables", {})
+    seed = body.get("seed")
+    if not expression:
+        raise HTTPException(status_code=400, detail="Expression required")
+    from spatial_dsl import evaluate_dsl, DSLError
+    try:
+        result = evaluate_dsl(expression, variables=variables, seed=seed)
+        return {"status": "success", **result}
+    except DSLError as e:
+        return {"status": "error", "error": str(e)}
+
+@api_router.get("/dsl/reference")
+async def dsl_reference():
+    """Get DSL syntax reference and examples."""
+    return {
+        "version": "1.0.0",
+        "grammar": "expression := operation ('>>' operation)*",
+        "operations": {
+            "SHAPE(name)": "Create base primitive: cube, sphere, cylinder, torus, plane, hexprism, cone, desk, chair, panel, hexagon, pod",
+            "SCALE(x, y, z)": "Scale transform",
+            "ROTATE(x, y, z)": "Rotate in degrees",
+            "TRANSLATE(x, y, z)": "Move position",
+            "EXTRUDE(axis, amount)": "Extrude along axis (x, y, z)",
+            "FILLET(radius)": "Round edges",
+            "BOOLEAN(op, operand)": "Boolean: union, subtract, intersect",
+            "MIRROR(axis)": "Mirror across axis",
+            "ARRAY(axis, count, spacing)": "Linear array",
+            "TWIST(axis, angle)": "Twist deformation",
+            "TAPER(axis, factor)": "Taper deformation",
+            "NOISE(amplitude, frequency)": "Procedural noise displacement",
+            "COLOR(hex)": "Apply color (#RRGGBB)",
+            "MATERIAL(name)": "Apply material from ontology",
+            "DIM(n, param_vector)": "Set n-dimensional parameter state (colon-separated)"
+        },
+        "examples": [
+            {"expression": "SHAPE(cube)", "description": "Simple cube"},
+            {"expression": "SHAPE(cube) >> SCALE(2,1,1) >> FILLET(0.1)", "description": "Stretched cube with rounded edges"},
+            {"expression": "SHAPE(cylinder) >> EXTRUDE(z, 3) >> TWIST(y, 90) >> COLOR(#00F0FF)", "description": "Twisted extruded cylinder in cyan"},
+            {"expression": "SHAPE(hexprism) >> ARRAY(x, 5, 1.2) >> MATERIAL(Bamboo Composite)", "description": "Hexagonal array in bamboo"},
+            {"expression": "SHAPE(cube) >> BOOLEAN(subtract, SHAPE(sphere)) >> FILLET(0.05)", "description": "Cube with spherical cutout"},
+            {"expression": "SHAPE(sphere) >> NOISE(0.2, 3) >> TAPER(y, 0.5) >> DIM(4, 0.5:0.8:0.3:0.9)", "description": "Procedural organic form in 4D parameter space"},
+            {"expression": "SHAPE(desk) >> SCALE($w, 1, $d) >> COLOR($color)", "description": "Parametric desk (use variables: {w, d, color})"},
+        ],
+        "variables": "Prefix with $ (e.g. $width). Pass in request body as {variables: {width: 2}}",
+        "pipeline": "Chain operations with >> operator. Each operation transforms the current state."
+    }
+
+# ──────────── Agent Evaluation API ────────────
+@api_router.get("/admin/agent-eval")
+async def run_agent_evaluation(request: Request):
+    """Run agent evaluation test suite (admin only)."""
+    verify_admin_token(request)
+    from agent_eval import run_all_tests
+    results = run_all_tests()
+    return results
 
 # ──────────── Public Spatial Intelligence API ────────────
 class PublicSpatialRequest(BaseModel):
